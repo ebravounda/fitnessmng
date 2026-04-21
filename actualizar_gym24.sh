@@ -88,7 +88,7 @@ if docker ps -a --format '{{.Names}}' | grep -q "$DOCKER_CONTAINER"; then
         docker run -d \
             --name "$DOCKER_CONTAINER" \
             --restart always \
-            -p 8002:8001 \
+            -p 8003:8001 \
             --env-file .env \
             "$DOCKER_IMAGE"
     fi
@@ -99,7 +99,7 @@ else
     docker run -d \
         --name "$DOCKER_CONTAINER" \
         --restart always \
-        -p 8002:8001 \
+        -p 8003:8001 \
         --env-file .env \
         "$DOCKER_IMAGE"
 fi

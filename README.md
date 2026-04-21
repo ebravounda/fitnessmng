@@ -47,7 +47,7 @@ cd /opt/gym24/repo
 - Nginx Additional Directives:
 ```nginx
 location / {
-    proxy_pass http://127.0.0.1:8002;
+    proxy_pass http://127.0.0.1:8003;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection 'upgrade';
@@ -61,4 +61,4 @@ location / {
 ```
 - SSL: Let's Encrypt + Redirect HTTP to HTTPS
 
-**NOTA**: El backend usa puerto **8002** (para no conflictar con ingresoqr.com en 8001)
+**NOTA**: El backend usa puerto **8003** (8001=ingresoqr, 8002=tramilex)

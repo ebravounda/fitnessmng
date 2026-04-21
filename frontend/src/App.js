@@ -111,49 +111,63 @@ const MemberRoute = ({ children }) => {
 // Landing Page
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-[#09090B] flex flex-col items-center justify-center p-8 noise-overlay">
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-5"
-        style={{ backgroundImage: 'url(https://images.pexels.com/photos/6388373/pexels-photo-6388373.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940)' }}
-      />
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      {/* Background gradient orbs */}
+      <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full opacity-[0.07]" style={{ background: 'radial-gradient(circle, #FF6600 0%, transparent 70%)' }} />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] rounded-full opacity-[0.05]" style={{ background: 'radial-gradient(circle, #FF6600 0%, transparent 70%)' }} />
       
-      <div className="relative z-10 text-center max-w-xl">
-        <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-4">
-          <span style={{ color: 'var(--gym-primary)' }}>Gym</span>24
+      {/* Grid pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,102,0,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,102,0,0.3) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+      
+      <div className="relative z-10 text-center max-w-2xl">
+        {/* Logo */}
+        <div className="mb-8">
+          <img src="/logo192.png" alt="Gym24" className="w-24 h-24 mx-auto rounded-2xl shadow-2xl" style={{ boxShadow: '0 0 40px rgba(255,102,0,0.2)' }} />
+        </div>
+        
+        <h1 className="text-6xl sm:text-7xl font-black tracking-tighter mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <span style={{ color: '#FF6600' }}>Gym</span><span className="text-white">24</span>
         </h1>
-        <p className="text-zinc-400 text-lg mb-12">
-          Sistema de control de acceso inteligente para gimnasios
+        <p className="text-[#777] text-lg mb-14 font-light tracking-wide">
+          Control de acceso inteligente
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a 
             href="/admin/login"
-            className="btn-gym-primary text-center"
+            className="btn-gym-primary text-center text-base px-10 py-4"
             data-testid="admin-access-btn"
           >
             Panel de Administración
           </a>
           <a 
             href="/app/login"
-            className="px-6 py-3 rounded-full border border-zinc-700 hover:border-zinc-500 text-white font-semibold transition-colors text-center"
+            className="px-10 py-4 rounded-xl border border-[#222] hover:border-[#FF6600]/30 text-white font-semibold transition-all text-center hover:bg-[#FF6600]/5"
+            style={{ fontFamily: 'Outfit, sans-serif' }}
             data-testid="member-access-btn"
           >
             Acceso Socios
           </a>
         </div>
         
-        <div className="mt-16 grid grid-cols-3 gap-8 text-center">
-          <div>
-            <p className="text-3xl font-black" style={{ color: 'var(--gym-primary)' }}>QR</p>
-            <p className="text-zinc-500 text-sm">Dinámico</p>
+        <div className="mt-20 flex justify-center gap-16">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid rgba(255,102,0,0.15)' }}>
+              <span className="text-2xl font-black" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>QR</span>
+            </div>
+            <p className="text-[#555] text-xs font-medium uppercase tracking-widest">Dinámico</p>
           </div>
-          <div>
-            <p className="text-3xl font-black" style={{ color: 'var(--gym-primary)' }}>24/7</p>
-            <p className="text-zinc-500 text-sm">Acceso</p>
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid rgba(255,102,0,0.15)' }}>
+              <span className="text-2xl font-black" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>24/7</span>
+            </div>
+            <p className="text-[#555] text-xs font-medium uppercase tracking-widest">Acceso</p>
           </div>
-          <div>
-            <p className="text-3xl font-black" style={{ color: 'var(--gym-primary)' }}>100%</p>
-            <p className="text-zinc-500 text-sm">Seguro</p>
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid rgba(255,102,0,0.15)' }}>
+              <span className="text-xl font-black" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>100%</span>
+            </div>
+            <p className="text-[#555] text-xs font-medium uppercase tracking-widest">Seguro</p>
           </div>
         </div>
       </div>

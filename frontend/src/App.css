@@ -1,57 +1,42 @@
+/* ========================================
+   Gym24 - Design System
+   ======================================== */
+
 /* Theme Variables */
 :root {
-  --bg-primary: #09090B;
-  --bg-secondary: #18181B;
-  --bg-tertiary: #27272A;
-  --bg-hover: rgba(39, 39, 42, 0.5);
-  --border-primary: #27272A;
-  --border-secondary: #3F3F46;
-  --text-primary: #FAFAFA;
-  --text-secondary: #A1A1AA;
-  --text-muted: #71717A;
-  --text-dim: #52525B;
-  --sidebar-bg: #0a0a0b;
-  --modal-bg: rgba(0, 0, 0, 0.8);
-  --input-bg: #18181B;
-  --skeleton-from: #27272A;
-  --skeleton-via: #3F3F46;
-  --pwa-nav-bg: rgba(9, 9, 11, 0.9);
-  --shadow-color: rgba(0,0,0,0.3);
+  --bg-primary: #050505;
+  --bg-secondary: #0C0C0C;
+  --bg-tertiary: #141414;
+  --bg-hover: rgba(255, 102, 0, 0.04);
+  --border-primary: rgba(255, 255, 255, 0.06);
+  --border-secondary: rgba(255, 255, 255, 0.1);
+  --border-accent: rgba(255, 102, 0, 0.2);
+  --text-primary: #F5F5F5;
+  --text-secondary: #999999;
+  --text-muted: #666666;
+  --text-dim: #444444;
+  --sidebar-bg: #080808;
+  --modal-bg: rgba(0, 0, 0, 0.85);
+  --input-bg: #0C0C0C;
+  --skeleton-from: #141414;
+  --skeleton-via: #1a1a1a;
+  --pwa-nav-bg: rgba(5, 5, 5, 0.92);
+  --shadow-color: rgba(0,0,0,0.5);
   --gym-primary: #FF6600;
-  --gym-secondary: #3B82F6;
+  --gym-secondary: #FF8533;
   --admin-bg: var(--bg-primary);
   --admin-menu: var(--sidebar-bg);
   --admin-text: var(--text-primary);
-  --gym-primary-foreground: #0F172A;
+  --gym-primary-foreground: #FFFFFF;
 }
 
-.light-theme {
-  --bg-primary: #F8FAFC;
-  --bg-secondary: #FFFFFF;
-  --bg-tertiary: #E2E8F0;
-  --bg-hover: rgba(226, 232, 240, 0.5);
-  --border-primary: #E2E8F0;
-  --border-secondary: #CBD5E1;
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #64748B;
-  --text-dim: #94A3B8;
-  --sidebar-bg: #FFFFFF;
-  --modal-bg: rgba(0, 0, 0, 0.4);
-  --input-bg: #F1F5F9;
-  --skeleton-from: #E2E8F0;
-  --skeleton-via: #CBD5E1;
-  --pwa-nav-bg: rgba(255, 255, 255, 0.95);
-  --shadow-color: rgba(0,0,0,0.08);
-  --gym-primary-foreground: #0F172A;
-}
-
-
-/* Admin Sidebar Styles */
+/* ========================================
+   Admin Sidebar - Redesigned
+   ======================================== */
 .admin-sidebar {
-  width: 260px;
+  width: 240px;
   height: 100vh;
-  background: var(--admin-menu);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--border-primary);
   position: fixed;
   left: 0;
@@ -63,196 +48,169 @@
 }
 
 .admin-content {
-  margin-left: 260px;
+  margin-left: 240px;
   min-height: 100vh;
   overflow-y: auto;
   background: var(--admin-bg);
   color: var(--admin-text);
-  color: var(--text-primary);
 }
 
 /* Sidebar scrollbar */
 .scrollbar-thin::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: var(--border-secondary);
-  border-radius: 4px;
+  background: rgba(255, 102, 0, 0.2);
+  border-radius: 3px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dim);
+  background: rgba(255, 102, 0, 0.4);
 }
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-secondary) transparent;
+  scrollbar-color: rgba(255, 102, 0, 0.2) transparent;
 }
 
 @media (max-width: 1024px) {
   .admin-sidebar {
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
   .admin-sidebar.open {
     transform: translateX(0);
   }
-  
   .admin-content {
     margin-left: 0;
   }
 }
 
-/* PWA Bottom Navigation */
+/* ========================================
+   PWA Bottom Navigation - Redesigned
+   ======================================== */
 .pwa-bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 72px;
+  height: 68px;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   background: var(--pwa-nav-bg);
-  border-top: 1px solid var(--border-primary);
+  border-top: 1px solid rgba(255, 102, 0, 0.1);
   z-index: 50;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 .pwa-content {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
+  padding-bottom: calc(68px + env(safe-area-inset-bottom) + 16px);
   min-height: 100vh;
   min-height: 100dvh;
 }
 
 @media (max-width: 380px) {
-  .pwa-bottom-nav {
-    height: 64px;
-  }
-  .pwa-content {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
-  }
+  .pwa-bottom-nav { height: 60px; }
+  .pwa-content { padding-bottom: calc(60px + env(safe-area-inset-bottom) + 16px); }
 }
 
-/* Card Styles */
+/* ========================================
+   Stat Cards - Completely New Style
+   ======================================== */
 .stat-card {
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, #0C0C0C 0%, #0a0a0a 100%);
   border: 1px solid var(--border-primary);
-  border-radius: 12px;
-  padding: 24px;
-  transition: border-color 0.2s ease;
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 102, 0, 0.15), transparent);
 }
 
 .stat-card:hover {
-  border-color: var(--border-secondary);
+  border-color: rgba(255, 102, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 102, 0, 0.05);
 }
 
-/* Table Styles */
+/* ========================================
+   Data Table - New Style
+   ======================================== */
 .data-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .data-table th {
   text-align: left;
-  padding: 12px 16px;
+  padding: 10px 16px;
   font-weight: 600;
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--gym-primary);
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border-primary);
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid rgba(255, 102, 0, 0.1);
+  font-family: 'Outfit', sans-serif;
 }
 
 .data-table td {
-  padding: 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border-primary);
   color: var(--text-primary);
+  font-size: 14px;
 }
 
 .data-table tr:hover td {
-  background: var(--bg-hover);
+  background: rgba(255, 102, 0, 0.02);
 }
 
-/* Badge Styles */
+/* ========================================
+   Badges - New Style
+   ======================================== */
 .badge {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 9999px;
+  border-radius: 8px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(16, 185, 129, 0.1);
   color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.15);
 }
 
 .badge-warning {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.1);
   color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.15);
 }
 
 .badge-danger {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.1);
   color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
 .badge-primary {
-  background: rgba(225, 255, 1, 0.15);
+  background: rgba(255, 102, 0, 0.1);
   color: var(--gym-primary);
-}
-
-/* Button Primary with gym color */
-.btn-gym-primary {
-  background: var(--gym-primary);
-  color: var(--gym-primary-foreground);
-  font-weight: 600;
-  padding: 12px 24px;
-  border-radius: 9999px;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.15s ease;
-}
-
-.btn-gym-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-gym-primary:active {
-  transform: scale(0.98);
-}
-
-.btn-gym-secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-weight: 600;
-  padding: 12px 24px;
-  border-radius: 9999px;
-  border: 1px solid var(--border-secondary);
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-.btn-gym-secondary:hover {
-  background: var(--border-secondary);
-  color: var(--text-primary);
-}
-
-.input-gym {
-  background: var(--input-bg);
-  border: 1px solid var(--border-primary);
-  color: var(--text-primary);
-  padding: 10px 14px;
-  border-radius: 8px;
-  width: 100%;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-.input-gym:focus {
-  border-color: var(--gym-primary);
+  border: 1px solid rgba(255, 102, 0, 0.15);
 }
 
 .badge-feature {
@@ -262,39 +220,106 @@
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  background: rgba(225, 255, 1, 0.1);
+  background: rgba(255, 102, 0, 0.08);
   color: var(--gym-primary);
-  border: 1px solid rgba(225, 255, 1, 0.2);
+  border: 1px solid rgba(255, 102, 0, 0.15);
 }
 
+/* ========================================
+   Buttons - Redesigned
+   ======================================== */
+.btn-gym-primary {
+  background: linear-gradient(135deg, #FF6600 0%, #E65C00 100%);
+  color: #FFFFFF;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(255, 102, 0, 0.25);
+}
 
-/* Input Styles */
+.btn-gym-primary:hover {
+  background: linear-gradient(135deg, #FF7722 0%, #FF6600 100%);
+  box-shadow: 0 4px 16px rgba(255, 102, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-gym-primary:active {
+  transform: scale(0.98) translateY(0);
+}
+
+.btn-gym-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: 1px solid var(--border-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Outfit', sans-serif;
+}
+
+.btn-gym-secondary:hover {
+  background: var(--border-secondary);
+  color: var(--text-primary);
+  border-color: rgba(255, 102, 0, 0.2);
+}
+
+/* ========================================
+   Input Fields - Redesigned
+   ======================================== */
+.input-gym {
+  background: var(--input-bg);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 12px;
+  width: 100%;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.input-gym:focus {
+  border-color: var(--gym-primary);
+  box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+}
+
 .input-dark {
   background: var(--input-bg);
   border: 1px solid var(--border-primary);
   color: var(--text-primary);
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   width: 100%;
   font-size: 14px;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .input-dark:focus {
   outline: none;
   border-color: var(--gym-primary);
+  box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
 }
 
 .input-dark::placeholder {
-  color: var(--text-muted);
+  color: var(--text-dim);
 }
 
-/* Modal/Dialog Overlay */
+/* ========================================
+   Modal/Dialog - Redesigned
+   ======================================== */
 .modal-overlay {
   position: fixed;
   inset: 0;
   background: var(--modal-bg);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -302,16 +327,17 @@
 }
 
 .modal-content {
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, #0C0C0C 0%, #080808 100%);
   border: 1px solid var(--border-primary);
-  border-radius: 16px;
+  border-radius: 20px;
   max-width: 500px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
 }
 
-/* QR Full Screen Modal */
+/* QR Full Screen */
 .qr-fullscreen {
   position: fixed;
   inset: 0;
@@ -341,28 +367,24 @@
   background: #EF4444;
 }
 
-/* Loading skeleton */
+/* Loading skeleton - new style */
 .skeleton {
-  background: linear-gradient(90deg, var(--skeleton-from) 25%, var(--skeleton-via) 50%, var(--skeleton-from) 75%);
+  background: linear-gradient(90deg, #141414 25%, #1a1a1a 50%, #141414 75%);
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 @keyframes skeleton-loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Chart container */
 .chart-container {
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, #0C0C0C 0%, #080808 100%);
   border: 1px solid var(--border-primary);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
 }
 
@@ -377,100 +399,100 @@
   width: 64px;
   height: 64px;
   margin: 0 auto 16px;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
-/* Tabs styling */
+/* Tabs styling - redesigned */
 .tab-list {
   display: flex;
   gap: 4px;
   background: var(--bg-secondary);
   padding: 4px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--border-primary);
 }
 
 .tab-item {
   padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 500;
+  border-radius: 10px;
+  font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: 'Outfit', sans-serif;
 }
 
 .tab-item:hover {
   color: var(--text-primary);
+  background: rgba(255, 102, 0, 0.05);
 }
 
 .tab-item.active {
-  background: var(--gym-primary);
-  color: var(--gym-primary-foreground);
+  background: linear-gradient(135deg, #FF6600 0%, #E65C00 100%);
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(255, 102, 0, 0.25);
 }
 
 /* ========================================
-   Light Theme - Tailwind Zinc Overrides
-   Remap hardcoded zinc classes globally
+   Light Theme Overrides
    ======================================== */
-.light-theme .text-zinc-400 { color: #64748B; }
-.light-theme .text-zinc-500 { color: #475569; }
-.light-theme .text-zinc-300 { color: #334155; }
-.light-theme .text-zinc-200 { color: #1E293B; }
-.light-theme .text-zinc-600 { color: #334155; }
+.light-theme {
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F0F0F0;
+  --bg-hover: rgba(255, 102, 0, 0.04);
+  --border-primary: #E5E5E5;
+  --border-secondary: #D4D4D4;
+  --text-primary: #0A0A0A;
+  --text-secondary: #525252;
+  --text-muted: #737373;
+  --text-dim: #A3A3A3;
+  --sidebar-bg: #FFFFFF;
+  --modal-bg: rgba(0, 0, 0, 0.4);
+  --input-bg: #F5F5F5;
+  --skeleton-from: #E5E5E5;
+  --skeleton-via: #D4D4D4;
+  --pwa-nav-bg: rgba(255, 255, 255, 0.95);
+  --shadow-color: rgba(0,0,0,0.06);
+  --gym-primary-foreground: #FFFFFF;
+}
 
-.light-theme .bg-zinc-800 { background-color: #E2E8F0; }
-.light-theme .bg-zinc-900 { background-color: #F1F5F9; }
-.light-theme .bg-zinc-950 { background-color: #F8FAFC; }
-.light-theme .bg-zinc-800\/50 { background-color: rgba(226, 232, 240, 0.5); }
+.light-theme .text-zinc-400 { color: #737373; }
+.light-theme .text-zinc-500 { color: #525252; }
+.light-theme .text-zinc-300 { color: #404040; }
+.light-theme .text-zinc-200 { color: #262626; }
+.light-theme .text-zinc-600 { color: #404040; }
 
-.light-theme .border-zinc-800 { border-color: #E2E8F0; }
-.light-theme .border-zinc-700 { border-color: #CBD5E1; }
-.light-theme .border-zinc-600 { border-color: #CBD5E1; }
+.light-theme .bg-zinc-800 { background-color: #F0F0F0; }
+.light-theme .bg-zinc-900 { background-color: #F5F5F5; }
+.light-theme .bg-zinc-950 { background-color: #FAFAFA; }
+.light-theme .bg-zinc-800\/50 { background-color: rgba(240, 240, 240, 0.5); }
 
-.light-theme .hover\:bg-zinc-800:hover { background-color: #E2E8F0; }
-.light-theme .hover\:bg-zinc-700:hover { background-color: #CBD5E1; }
-.light-theme .hover\:bg-zinc-800\/50:hover { background-color: rgba(226, 232, 240, 0.5); }
-.light-theme .hover\:text-white:hover { color: #0F172A; }
-.light-theme .hover\:text-zinc-300:hover { color: #334155; }
+.light-theme .border-zinc-800 { border-color: #E5E5E5; }
+.light-theme .border-zinc-700 { border-color: #D4D4D4; }
+.light-theme .border-zinc-600 { border-color: #D4D4D4; }
 
-.light-theme .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) { border-color: #E2E8F0; }
+.light-theme .hover\:bg-zinc-800:hover { background-color: #F0F0F0; }
+.light-theme .hover\:bg-zinc-700:hover { background-color: #D4D4D4; }
+.light-theme .hover\:bg-zinc-800\/50:hover { background-color: rgba(240, 240, 240, 0.5); }
+.light-theme .hover\:text-white:hover { color: #0A0A0A; }
 
-/* Fix specific hardcoded background patterns */
+.light-theme .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) { border-color: #E5E5E5; }
+
 .light-theme .bg-black\/60 { background-color: rgba(0, 0, 0, 0.3); }
 .light-theme .bg-black\/80 { background-color: rgba(0, 0, 0, 0.4); }
 
-/* Ring and focus overrides */
-.light-theme .ring-zinc-700 { --tw-ring-color: #CBD5E1; }
-.light-theme .focus\:ring-zinc-500:focus { --tw-ring-color: #94A3B8; }
+.light-theme .ring-zinc-700 { --tw-ring-color: #D4D4D4; }
 
-/* Active nav items - keep readable in light */
-.light-theme .bg-zinc-800.text-white { 
-  background-color: #E2E8F0; 
-  color: #0F172A; 
-}
-
-/* Scrollbar in light */
-.light-theme .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-}
-.light-theme .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
-.light-theme .scrollbar-thin {
-  scrollbar-color: #CBD5E1 transparent;
-}
-
-/* Arbitrary value class overrides */
-.light-theme .bg-\[\#09090B\] { background-color: #F8FAFC; }
+.light-theme .bg-\[\#09090B\] { background-color: #FAFAFA; }
+.light-theme .bg-\[\#050505\] { background-color: #FAFAFA; }
 .light-theme .bg-\[\#0a0a0b\] { background-color: #FFFFFF; }
+.light-theme .bg-\[\#0C0C0C\] { background-color: #FFFFFF; }
 .light-theme .bg-\[\#18181B\] { background-color: #FFFFFF; }
 .light-theme .bg-zinc-900\/80 { background-color: rgba(255, 255, 255, 0.85); }
-.light-theme .border-\[var\(--gym-primary\)\] { border-color: var(--gym-primary); }
 
-/* CRITICAL: text-white -> dark in light theme */
-.light-theme .text-white { color: #0F172A; }
+.light-theme .text-white { color: #0A0A0A; }
 
-/* Exceptions: Keep white text on colored/button backgrounds */
 .light-theme .btn-gym-primary .text-white,
 .light-theme .btn-gym-primary.text-white,
 .light-theme [class*="bg-blue-"].text-white,
@@ -487,30 +509,25 @@
 .light-theme [class*="bg-emerald-"] .text-white,
 .light-theme [class*="bg-orange-"] .text-white { color: #FFFFFF; }
 
-/* Keep foreground color correct on primary buttons in light theme */
 .light-theme .btn-gym-primary {
   color: var(--gym-primary-foreground);
 }
 
-/* Stat cards in light theme */
 .light-theme .stat-card {
   background: var(--bg-secondary);
   border-color: var(--border-primary);
 }
 
-/* Dropdown menus in light theme */
 .light-theme [role="menu"] {
   background: var(--bg-secondary);
   border-color: var(--border-primary);
 }
 
-/* Dialog content in light theme */
 .light-theme [role="dialog"] {
   background: var(--bg-secondary);
   border-color: var(--border-primary);
 }
 
-/* Input fields in light theme */
 .light-theme .input-dark,
 .light-theme .input-gym {
   background: var(--input-bg);
@@ -518,12 +535,10 @@
   color: var(--text-primary);
 }
 
-/* Login page text overrides */
-.light-theme .hover\:text-white:hover { color: #0F172A; }
+.light-theme .scrollbar-thin::-webkit-scrollbar-thumb { background: #D4D4D4; }
+.light-theme .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #A3A3A3; }
+.light-theme .scrollbar-thin { scrollbar-color: #D4D4D4 transparent; }
 
-/* Ensure code blocks are readable in light */
-.light-theme code.bg-zinc-800 { background-color: #E2E8F0; color: #0F172A; }
-
-/* Fix placeholder visibility */
-.light-theme .placeholder-zinc-500::placeholder { color: #94A3B8; }
-.light-theme .placeholder-zinc-600::placeholder { color: #64748B; }
+.light-theme code.bg-zinc-800 { background-color: #F0F0F0; color: #0A0A0A; }
+.light-theme .placeholder-zinc-500::placeholder { color: #A3A3A3; }
+.light-theme .placeholder-zinc-600::placeholder { color: #737373; }

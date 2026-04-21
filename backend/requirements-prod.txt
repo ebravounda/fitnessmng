@@ -12,3 +12,12 @@ passlib==1.7.4
 cryptography==46.0.5
 email-validator==2.3.0
 starlette==0.37.2
+aiosmtplib==5.1.0
+openpyxl==3.1.5
+reportlab==4.4.10
+pillow==12.1.1
+boto3==1.42.58
+Jinja2==3.1.6
+pycryptodome==3.23.0
+redsys==0.3.1
+requests==2.32.5

@@ -5,13 +5,11 @@ WORKDIR /app
 COPY requirements-prod.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY server.py .
+COPY . .
 
-ENV MONGO_URL=mongodb://host.docker.internal:27017
-ENV DB_NAME=gymaccess
-ENV JWT_SECRET=CambiaEstoPorUnaClaveLargaYSegura2024
-ENV QR_SECRET=OtraClaveDiferenteParaQR2024
-ENV CORS_ORIGINS=https://gym.ticketpro.es
+ENV MONGO_URL=mongodb://172.17.0.1:27017
+ENV DB_NAME=gym24
+ENV CORS_ORIGINS=https://gym24.app,https://www.gym24.app
 
 EXPOSE 8001
 

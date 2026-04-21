@@ -54,7 +54,7 @@ cp "$REPO_DIR/backend/generate_docs.py" "$BACKEND_DIR/" 2>/dev/null
 cp "$REPO_DIR/backend/redsys_utils.py" "$BACKEND_DIR/" 2>/dev/null
 cp -r "$REPO_DIR/backend/routes/"* "$BACKEND_DIR/routes/"
 cp -r "$REPO_DIR/backend/downloads/"* "$BACKEND_DIR/downloads/" 2>/dev/null
-cp "$REPO_DIR/backend/requirements-prod.txt" "$BACKEND_DIR/requirements.txt" 2>/dev/null
+cp "$REPO_DIR/backend/requirements-prod.txt" "$BACKEND_DIR/requirements-prod.txt" 2>/dev/null
 cp "$REPO_DIR/backend/Dockerfile" "$BACKEND_DIR/" 2>/dev/null
 echo "OK - Archivos backend copiados"
 echo ""

@@ -149,37 +149,33 @@ export default function MemberHome() {
   const showPaymentAlert = membershipStatus.status === 'expired' || membershipStatus.status === 'expiring';
 
   return (
-    <div className="space-y-6" data-testid="member-home">
+    <div className="space-y-5" data-testid="member-home">
       {/* PWA Install Banner */}
       <AnimatePresence>
         {showInstallBanner && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="relative p-4 rounded-2xl border border-blue-500/30 overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.1) 100%)' }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="relative p-4 rounded-2xl overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, rgba(255,102,0,0.08), rgba(255,102,0,0.03))', border: '1px solid rgba(255,102,0,0.15)' }}
             data-testid="pwa-install-banner"
           >
-            <button onClick={dismissInstallBanner} className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors" data-testid="dismiss-install-btn">
+            <button onClick={dismissInstallBanner} className="absolute top-3 right-3 p-1 rounded-full" style={{ color: 'var(--text-dim)' }} data-testid="dismiss-install-btn">
               <X size={16} />
             </button>
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
-                <Smartphone size={24} className="text-blue-400" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,102,0,0.15)' }}>
+                <Smartphone size={24} style={{ color: '#FF6600' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-white text-sm">Instalar App</p>
-                <p className="text-zinc-400 text-xs mt-0.5">
-                  {deferredPrompt 
-                    ? 'Toca "Instalar" y tendras un acceso directo en tu inicio' 
-                    : /iPad|iPhone|iPod/.test(navigator.userAgent)
-                      ? 'Abre Safari, toca el icono de compartir y selecciona "Agregar a inicio"'
-                      : 'Abre el menu de tu navegador y selecciona "Agregar a pantalla de inicio"'}
+                <p className="font-bold text-sm" style={{ fontFamily: 'Outfit' }}>Instalar App</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>
+                  {deferredPrompt ? 'Acceso directo en tu pantalla de inicio' : /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Safari > Compartir > Agregar a inicio' : 'Menu > Agregar a pantalla de inicio'}
                 </p>
               </div>
               {deferredPrompt && (
-                <Button onClick={handleInstall} size="sm" className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-4 shrink-0" data-testid="install-pwa-btn">
+                <Button onClick={handleInstall} size="sm" className="btn-gym-primary text-xs px-4 shrink-0" data-testid="install-pwa-btn">
                   <Download size={14} className="mr-1" /> Instalar
                 </Button>
               )}
@@ -187,228 +183,165 @@ export default function MemberHome() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Pending Payment Block - No active membership */}
+
+      {/* Pending / Suspended blocks */}
       {isPending && !isPaymentSuspended && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center"
-          data-testid="pending-payment-block"
-        >
-          <CreditCard size={40} className="mx-auto mb-3 text-amber-400" />
-          <p className="text-amber-300 font-bold text-lg mb-2">Pago Pendiente</p>
-          <p className="text-zinc-400 text-sm mb-4">
-            Para habilitar tu acceso, realiza el pago de tu {labels.membership.toLowerCase()}.
-          </p>
-          <Button
-            onClick={() => navigate('/app/membership')}
-            className="bg-amber-500 hover:bg-amber-600 text-black font-bold"
-            data-testid="pay-membership-btn"
-          >
-            <CreditCard size={16} className="mr-2" />
-            Pagar {labels.membership}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-2xl text-center" style={{ background: 'rgba(255,102,0,0.06)', border: '1px solid rgba(255,102,0,0.15)' }}
+          data-testid="pending-payment-block">
+          <CreditCard size={36} className="mx-auto mb-3" style={{ color: '#FF6600' }} />
+          <p className="font-bold text-lg mb-1" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>Pago Pendiente</p>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>Realiza el pago de tu {labels.membership.toLowerCase()} para habilitar el acceso.</p>
+          <Button onClick={() => navigate('/app/membership')} className="btn-gym-primary" data-testid="pay-membership-btn">
+            <CreditCard size={16} className="mr-2" /> Pagar {labels.membership}
           </Button>
         </motion.div>
       )}
 
-      {/* Payment Suspended Block - Membership expired, needs renewal */}
       {isPaymentSuspended && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 rounded-xl bg-red-500/10 border border-red-500/30 text-center"
-          data-testid="payment-suspended-block"
-        >
-          <AlertTriangle size={40} className="mx-auto mb-3 text-red-400" />
-          <p className="text-red-300 font-bold text-lg mb-2">Cuenta Suspendida por Falta de Pago</p>
-          <p className="text-zinc-400 text-sm mb-4">
-            Tu {labels.membership.toLowerCase()} ha vencido. Renueva tu plan para recuperar el acceso.
-          </p>
-          <Button
-            onClick={() => navigate('/app/membership')}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold"
-            data-testid="renew-membership-btn"
-          >
-            <CreditCard size={16} className="mr-2" />
-            Renovar {labels.membership}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-2xl text-center" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}
+          data-testid="payment-suspended-block">
+          <AlertTriangle size={36} className="mx-auto mb-3 text-red-500" />
+          <p className="text-red-400 font-bold text-lg mb-1" style={{ fontFamily: 'Outfit' }}>Cuenta Suspendida</p>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>Tu {labels.membership.toLowerCase()} ha vencido. Renueva para recuperar el acceso.</p>
+          <Button onClick={() => navigate('/app/membership')} className="bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl" data-testid="renew-membership-btn">
+            <CreditCard size={16} className="mr-2" /> Renovar
           </Button>
         </motion.div>
       )}
 
-      {/* Payment Alert - Membership expiring or expired */}
       {showPaymentAlert && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`p-4 rounded-xl ${
-            membershipStatus.status === 'expired' 
-              ? 'bg-red-500/10 border border-red-500/30' 
-              : 'bg-amber-500/10 border border-amber-500/30'
-          }`}
-          data-testid="payment-alert"
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={22} className={`shrink-0 mt-0.5 ${
-              membershipStatus.status === 'expired' ? 'text-red-500' : 'text-amber-500'
-            }`} />
-            <div className="flex-1">
-              <p className={`font-bold text-sm ${
-                membershipStatus.status === 'expired' ? 'text-red-400' : 'text-amber-400'
-              }`}>
-                {membershipStatus.status === 'expired' 
-                  ? 'Tu membresía ha vencido'
-                  : `Tu membresía vence en ${daysRemaining} días`
-                }
-              </p>
-              <p className="text-xs text-zinc-400 mt-1">
-                {membershipStatus.status === 'expired'
-                  ? `Renueva tu ${labels.membership.toLowerCase()} para seguir accediendo.`
-                  : 'Renueva ahora para no perder acceso.'}
-              </p>
-              <Button
-                onClick={() => navigate('/app/membership')}
-                className="mt-3 btn-gym-primary text-sm h-9"
-                data-testid="pay-now-btn"
-              >
-                <CreditCard size={16} className="mr-2" />
-                {membershipStatus.status === 'expired' ? 'Renovar Ahora' : 'Pagar Ahora'}
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Main QR Card - Only show if member has active access */}
-      {!isPending && !isPaymentSuspended ? (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="qr-container text-center"
-        data-testid="qr-container"
-      >
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl font-bold">{member?.name}</h2>
-          <p className="text-zinc-400 font-mono text-xs sm:text-sm">{member?.code}</p>
-        </div>
-
-        <div 
-          className="flex justify-center cursor-pointer"
-          onClick={() => setFullscreen(true)}
-          data-testid="qr-expand-btn"
-        >
-          {loading ? (
-            <div className="w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] bg-zinc-800 rounded-2xl animate-pulse" />
-          ) : error ? (
-            <div className="w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] bg-zinc-800 rounded-2xl flex items-center justify-center">
-              <p className="text-red-500 text-sm">{error}</p>
-            </div>
-          ) : (
-            <QRDisplay size={typeof window !== 'undefined' && window.innerWidth < 380 ? 160 : 200} />
-          )}
-        </div>
-
-        {qrMode === 'dynamic' && (
-          <div className="mt-4 sm:mt-6 flex items-center justify-center gap-2">
-            <span className="text-zinc-500 text-xs sm:text-sm">Actualiza en</span>
-            <span 
-              className="font-mono font-bold text-base sm:text-lg"
-              style={{ color: 'var(--gym-primary)' }}
-              data-testid="qr-countdown"
-            >
-              {countdown}s
-            </span>
-          </div>
-        )}
-        {qrMode === 'static' && (
-          <div className="mt-4 sm:mt-6 flex items-center justify-center gap-2">
-            <span className="text-zinc-500 text-xs sm:text-sm">QR fijo - no caduca</span>
-          </div>
-        )}
-
-        <button
-          onClick={() => setFullscreen(true)}
-          className="mt-3 sm:mt-4 text-zinc-400 hover:text-white flex items-center gap-2 mx-auto text-xs sm:text-sm transition-colors"
-        >
-          <Maximize2 size={14} />
-          Pantalla completa
-        </button>
-      </motion.div>
-      ) : null}
-
-      {/* Membership Info Card */}
-      {membership && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="stat-card"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-zinc-500 text-sm">Tu Membresía</p>
-              <p className="font-bold">{daysRemaining > 0 ? `${daysRemaining} días restantes` : 'Vencida'}</p>
-            </div>
-            <div className={`p-3 rounded-xl ${
-              membershipStatus.color === 'success' ? 'bg-emerald-500/10' :
-              membershipStatus.color === 'warning' ? 'bg-amber-500/10' : 'bg-red-500/10'
-            }`}>
-              <CheckCircle size={24} className={
-                membershipStatus.color === 'success' ? 'text-emerald-500' :
-                membershipStatus.color === 'warning' ? 'text-amber-500' : 'text-red-500'
-              } />
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* No Membership Card */}
-      {!membership && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="stat-card border border-amber-500/20"
-        >
-          <div className="text-center py-2">
-            <CreditCard size={32} className="mx-auto text-amber-500 mb-3" />
-            <p className="font-bold text-amber-400">Sin Membresía Activa</p>
-            <p className="text-xs text-zinc-500 mt-1 mb-3">Necesitas una membresía para acceder</p>
-            <Button onClick={() => navigate('/app/membership')} className="btn-gym-primary text-sm h-9" data-testid="get-membership-btn">
-              <CreditCard size={16} className="mr-2" /> Ver Planes
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-2xl flex items-start gap-3"
+          style={{ background: membershipStatus.status === 'expired' ? 'rgba(239,68,68,0.06)' : 'rgba(245,158,11,0.06)', border: `1px solid ${membershipStatus.status === 'expired' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'}` }}
+          data-testid="payment-alert">
+          <AlertTriangle size={20} className={`shrink-0 mt-0.5 ${membershipStatus.status === 'expired' ? 'text-red-500' : 'text-amber-500'}`} />
+          <div className="flex-1">
+            <p className={`font-bold text-sm ${membershipStatus.status === 'expired' ? 'text-red-400' : 'text-amber-400'}`} style={{ fontFamily: 'Outfit' }}>
+              {membershipStatus.status === 'expired' ? 'Membresia vencida' : `Vence en ${daysRemaining} dias`}
+            </p>
+            <Button onClick={() => navigate('/app/membership')} className="mt-2 btn-gym-primary text-xs h-8 px-4" data-testid="pay-now-btn">
+              <CreditCard size={14} className="mr-1" /> {membershipStatus.status === 'expired' ? 'Renovar' : 'Pagar'}
             </Button>
           </div>
         </motion.div>
       )}
 
-      {/* Quick Nav */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <div className="grid grid-cols-3 gap-3">
-          <button onClick={() => navigate('/app/stats')} className="stat-card flex flex-col items-center gap-2 py-4 hover:border-[var(--gym-primary)]/30 transition-colors" data-testid="nav-stats">
-            <BarChart3 size={22} className="text-[var(--gym-primary)]" />
-            <span className="text-xs text-zinc-400">Estadisticas</span>
-          </button>
-          <button onClick={() => navigate('/app/achievements')} className="stat-card flex flex-col items-center gap-2 py-4 hover:border-[var(--gym-primary)]/30 transition-colors" data-testid="nav-achievements">
-            <Trophy size={22} className="text-amber-400" />
-            <span className="text-xs text-zinc-400">Logros</span>
-          </button>
-          <button onClick={() => navigate('/app/routines')} className="stat-card flex flex-col items-center gap-2 py-4 hover:border-[var(--gym-primary)]/30 transition-colors" data-testid="nav-routines">
-            <Dumbbell size={22} className="text-purple-400" />
-            <span className="text-xs text-zinc-400">Rutinas</span>
+      {/* ===== MAIN QR CARD - Fitness 24 Style ===== */}
+      {!isPending && !isPaymentSuspended ? (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative rounded-3xl overflow-hidden"
+        style={{ background: 'linear-gradient(180deg, rgba(255,102,0,0.06) 0%, rgba(10,10,10,0.95) 30%)', border: '1px solid rgba(255,102,0,0.12)' }}
+        data-testid="qr-container"
+      >
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #FF6600, transparent)' }} />
+        
+        {/* Member info header */}
+        <div className="px-5 pt-5 pb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>Tu acceso</p>
+          <h2 className="text-xl font-bold" style={{ fontFamily: 'Outfit' }}>{member?.name}</h2>
+          <p className="font-mono text-xs mt-1" style={{ color: 'var(--text-dim)' }}>{member?.code}</p>
+        </div>
+
+        {/* QR Code centered */}
+        <div 
+          className="flex justify-center py-4 cursor-pointer"
+          onClick={() => setFullscreen(true)}
+          data-testid="qr-expand-btn"
+        >
+          {loading ? (
+            <div className="w-[180px] h-[180px] rounded-2xl animate-pulse" style={{ background: 'var(--bg-tertiary)' }} />
+          ) : error ? (
+            <div className="w-[180px] h-[180px] rounded-2xl flex items-center justify-center" style={{ background: 'var(--bg-tertiary)' }}>
+              <p className="text-red-500 text-sm">{error}</p>
+            </div>
+          ) : (
+            <QRDisplay size={typeof window !== 'undefined' && window.innerWidth < 380 ? 160 : 190} />
+          )}
+        </div>
+
+        {/* Timer / Status bar */}
+        <div className="px-5 pb-5">
+          {qrMode === 'dynamic' ? (
+            <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,102,0,0.06)', border: '1px solid rgba(255,102,0,0.1)' }}>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Actualiza en</span>
+              <span className="font-mono font-bold text-lg" style={{ color: '#FF6600' }} data-testid="qr-countdown">{countdown}s</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center p-3 rounded-xl" style={{ background: 'rgba(255,102,0,0.06)' }}>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>QR fijo - no caduca</span>
+            </div>
+          )}
+          
+          <button onClick={() => setFullscreen(true)} className="mt-3 flex items-center gap-2 mx-auto text-xs transition-colors" style={{ color: 'var(--text-dim)' }}>
+            <Maximize2 size={13} /> Pantalla completa
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-3 mt-3">
-          <button onClick={() => navigate('/app/classes')} className="stat-card flex flex-col items-center gap-2 py-4 hover:border-[var(--gym-primary)]/30 transition-colors" data-testid="nav-classes">
-            <Calendar size={22} className="text-emerald-400" />
-            <span className="text-xs text-zinc-400">Clases</span>
-          </button>
-          <button onClick={() => navigate('/app/history')} className="stat-card flex flex-col items-center gap-2 py-4 hover:border-[var(--gym-primary)]/30 transition-colors" data-testid="nav-history">
-            <Clock size={22} className="text-cyan-400" />
-            <span className="text-xs text-zinc-400">Accesos</span>
-          </button>
-          <button onClick={() => navigate('/app/membership')} className="stat-card flex flex-col items-center gap-2 py-4 hover:border-[var(--gym-primary)]/30 transition-colors" data-testid="nav-membership">
-            <CreditCard size={22} className="text-blue-400" />
-            <span className="text-xs text-zinc-400">{labels.membership}</span>
-          </button>
+      </motion.div>
+      ) : null}
+
+      {/* Membership Status - Compact card */}
+      {membership && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="flex items-center justify-between p-4 rounded-2xl" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              membershipStatus.color === 'success' ? 'bg-emerald-500/10' : membershipStatus.color === 'warning' ? 'bg-amber-500/10' : 'bg-red-500/10'
+            }`}>
+              <CheckCircle size={20} className={
+                membershipStatus.color === 'success' ? 'text-emerald-500' : membershipStatus.color === 'warning' ? 'text-amber-500' : 'text-red-500'
+              } />
+            </div>
+            <div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Tu {labels.membership}</p>
+              <p className="font-bold text-sm" style={{ fontFamily: 'Outfit' }}>{daysRemaining > 0 ? `${daysRemaining} dias` : 'Vencida'}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-mono" style={{ color: 'var(--text-dim)' }}>{membership.plan_name || ''}</p>
+          </div>
+        </motion.div>
+      )}
+
+      {!membership && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="p-5 rounded-2xl text-center" style={{ background: 'rgba(255,102,0,0.04)', border: '1px solid rgba(255,102,0,0.1)' }}>
+          <CreditCard size={28} className="mx-auto mb-2" style={{ color: '#FF6600' }} />
+          <p className="font-bold text-sm" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>Sin {labels.membership} Activa</p>
+          <Button onClick={() => navigate('/app/membership')} className="mt-3 btn-gym-primary text-xs h-9" data-testid="get-membership-btn">
+            Ver Planes
+          </Button>
+        </motion.div>
+      )}
+
+      {/* Quick Nav Grid - Fitness 24 style with orange icons */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { icon: BarChart3, label: 'Estadisticas', path: '/app/stats', testId: 'nav-stats' },
+            { icon: Trophy, label: 'Logros', path: '/app/achievements', testId: 'nav-achievements' },
+            { icon: Dumbbell, label: 'Rutinas', path: '/app/routines', testId: 'nav-routines' },
+            { icon: Calendar, label: 'Clases', path: '/app/classes', testId: 'nav-classes' },
+            { icon: Clock, label: 'Accesos', path: '/app/history', testId: 'nav-history' },
+            { icon: CreditCard, label: labels.membership, path: '/app/membership', testId: 'nav-membership' },
+          ].map(({ icon: Icon, label, path, testId }) => (
+            <button 
+              key={path}
+              onClick={() => navigate(path)} 
+              className="flex flex-col items-center gap-2 py-4 rounded-2xl transition-all active:scale-95"
+              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}
+              data-testid={testId}
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.08)' }}>
+                <Icon size={20} style={{ color: '#FF6600' }} />
+              </div>
+              <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)', fontFamily: 'Outfit' }}>{label}</span>
+            </button>
+          ))}
         </div>
       </motion.div>
 

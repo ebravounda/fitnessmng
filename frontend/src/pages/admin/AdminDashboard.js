@@ -61,62 +61,62 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8 stagger-children" data-testid="admin-dashboard">
       <div>
-        <h1 className="text-2xl font-black tracking-tight mb-1">Dashboard</h1>
-        <p className="text-zinc-400">Bienvenido, {admin?.name}</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>Dashboard</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>Bienvenido, {admin?.name}</p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Redesigned cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat-card" data-testid="stat-active-members">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-zinc-400 text-sm font-medium">{labels.members} Activos</span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-              <Users size={20} className="text-emerald-500" />
+        <div className="stat-card group" data-testid="stat-active-members">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{labels.members} Activos</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.12)' }}>
+              <Users size={18} className="text-emerald-500" />
             </div>
           </div>
-          <p className="text-3xl font-black">{stats?.active_members || 0}</p>
-          <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+          <p className="text-3xl font-bold" style={{ fontFamily: 'Outfit' }}>{stats?.active_members || 0}</p>
+          <p className="text-xs mt-2 flex items-center gap-1" style={{ color: 'var(--text-dim)' }}>
             <ArrowUpRight size={14} className="text-emerald-500" />
             {stats?.pending_members || 0} pendientes
           </p>
         </div>
 
         <div className="stat-card" data-testid="stat-today-accesses">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-zinc-400 text-sm font-medium">{labels.accesses} Hoy</span>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <TrendingUp size={20} className="text-blue-500" />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{labels.accesses} Hoy</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.12)' }}>
+              <TrendingUp size={18} className="text-blue-500" />
             </div>
           </div>
-          <p className="text-3xl font-black">{stats?.today_accesses || 0}</p>
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="text-3xl font-bold" style={{ fontFamily: 'Outfit' }}>{stats?.today_accesses || 0}</p>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-dim)' }}>
             {stats?.week_accesses || 0} esta semana
           </p>
         </div>
 
         <div className="stat-card" data-testid="stat-active-memberships">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-zinc-400 text-sm font-medium">{labels.memberships} Activas</span>
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-              <Calendar size={20} className="text-purple-500" />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{labels.memberships} Activas</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.12)' }}>
+              <Calendar size={18} className="text-purple-500" />
             </div>
           </div>
-          <p className="text-3xl font-black">{stats?.active_memberships || 0}</p>
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="text-3xl font-bold" style={{ fontFamily: 'Outfit' }}>{stats?.active_memberships || 0}</p>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-dim)' }}>
             {expiringMemberships.length} por vencer
           </p>
         </div>
 
         <div className="stat-card" data-testid="stat-revenue">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-zinc-400 text-sm font-medium">Ingresos del Mes</span>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(225, 255, 1, 0.1)' }}>
-              <DollarSign size={20} style={{ color: 'var(--gym-primary)' }} />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Ingresos del Mes</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.08)', border: '1px solid rgba(255,102,0,0.12)' }}>
+              <DollarSign size={18} style={{ color: '#FF6600' }} />
             </div>
           </div>
-          <p className="text-3xl font-black">{formatCurrency(stats?.month_revenue || 0)}</p>
+          <p className="text-3xl font-bold" style={{ fontFamily: 'Outfit' }}>{formatCurrency(stats?.month_revenue || 0)}</p>
           {isSuperAdmin && (
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs mt-2" style={{ color: 'var(--text-dim)' }}>
               {stats?.gyms_count || 0} negocios
             </p>
           )}

@@ -53,3 +53,13 @@ docker restart gym24-api
 ### P2
 - Logo dinámico en sidebar admin
 - Modo kiosko para piscinas (venta de accesos diarios desde tablet)
+
+### Sesión 2 (Abr 2026)
+- Rediseño completo PWA Home: Card QR estilo Fitness 24 Manager, quick nav con iconos naranja
+- PWA Bottom Nav: indicador naranja activo (línea + fondo), iconos naranja
+- PWA Login: dots indicadores, botón que se activa al completar código
+- Dashboard Admin: cards con iconos con bordes de color, tipografía Outfit
+- PWA Layout: header minimalizado
+- Tipo negocio "Piscina" añadido, "Coworking" eliminado
+- "Despliegue Backend" eliminado de Settings
+- Monitor RPi simplificado (IP pública, IP local, estado)

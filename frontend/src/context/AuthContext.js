@@ -207,7 +207,7 @@ export const AuthProvider = ({ children }) => {
     setIsImpersonating(false);
     delete axios.defaults.headers.common['Authorization'];
     
-    document.documentElement.style.setProperty('--gym-primary', '#E1FF01');
+    document.documentElement.style.setProperty('--gym-primary', '#FF6600');
   };
 
   const refreshMemberData = async () => {

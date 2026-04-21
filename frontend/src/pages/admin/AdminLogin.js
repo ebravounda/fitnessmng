@@ -67,7 +67,7 @@ export default function AdminLogin() {
             {gymName ? (
               <span style={{ color: gymColor }}>{gymName}</span>
             ) : (
-              <><span style={{ color: gymColor }}>Ingreso</span>QR</>
+              <><span style={{ color: gymColor }}>Gym</span>24</>
             )}
           </h1>
           <p className="text-zinc-400">

@@ -17,7 +17,7 @@ export const PWALayout = ({ children }) => {
   const navigate = useNavigate();
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('ingresoqr-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('gym24-theme') || 'dark');
 
   useEffect(() => {
     if (theme === 'light') {
@@ -25,7 +25,7 @@ export const PWALayout = ({ children }) => {
     } else {
       document.documentElement.classList.remove('light-theme');
     }
-    localStorage.setItem('ingresoqr-theme', theme);
+    localStorage.setItem('gym24-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
@@ -79,7 +79,7 @@ export const PWALayout = ({ children }) => {
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="font-bold text-sm truncate">{gym?.name || 'IngresoQR'}</h1>
+              <h1 className="font-bold text-sm truncate">{gym?.name || 'Gym24'}</h1>
               <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-muted)' }}>Socio</p>
             </div>
           </div>

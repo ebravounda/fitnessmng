@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const MAIN_DOMAINS = ['app.ingresoqr.com', 'localhost', '127.0.0.1', 'preview.emergentagent.com'];
+const MAIN_DOMAINS = ['gym24.app', 'localhost', '127.0.0.1', 'preview.emergentagent.com'];
 
 export function useCustomDomain() {
   const [domainGym, setDomainGym] = useState(null);

@@ -58,7 +58,7 @@ export const AdminLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('ingresoqr-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('gym24-theme') || 'dark');
   const [gymData, setGymData] = useState(null);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export const AdminLayout = ({ children }) => {
     } else {
       document.documentElement.classList.remove('light-theme');
     }
-    localStorage.setItem('ingresoqr-theme', theme);
+    localStorage.setItem('gym24-theme', theme);
   }, [theme]);
 
   // Apply corporate colors from gym and store gym data for logo
@@ -126,7 +126,7 @@ export const AdminLayout = ({ children }) => {
           <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' }}>
             <p className="text-sm font-medium mb-1">Contacta a Soporte</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              Escribe a <strong>soporte@ingresoqr.com</strong> o comunicate con tu representante para resolver esta situacion.
+              Escribe a <strong>soporte@gym24.app</strong> o comunicate con tu representante para resolver esta situacion.
             </p>
           </div>
           <button
@@ -179,7 +179,7 @@ export const AdminLayout = ({ children }) => {
             ) : (
               <QrCode size={24} style={{ color: 'var(--gym-primary)' }} />
             )}
-            <span className="font-bold">{gymData?.name || 'IngresoQR'}</span>
+            <span className="font-bold">{gymData?.name || 'Gym24'}</span>
           </div>
           <div className="w-10" />
         </div>
@@ -206,7 +206,7 @@ export const AdminLayout = ({ children }) => {
               </div>
             )}
             <div>
-              <h1 className="font-bold text-sm">{gymData?.name || 'IngresoQR'}</h1>
+              <h1 className="font-bold text-sm">{gymData?.name || 'Gym24'}</h1>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{admin?.role === 'super_admin' && !isImpersonating ? 'Super Admin' : 'Panel Admin'}</p>
             </div>
           </div>

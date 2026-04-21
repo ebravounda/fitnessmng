@@ -138,7 +138,7 @@ export default function AdminAnalytics() {
             <YAxis tick={{ fill: '#71717A', fontSize: 11 }} />
             <Tooltip contentStyle={{ background: '#18181B', border: '1px solid #27272A', borderRadius: 8, color: '#fff' }} />
             <Legend />
-            <Bar dataKey="membresias" name="Membresias" fill="#E1FF01" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="membresias" name="Membresias" fill="#FF6600" radius={[4, 4, 0, 0]} />
             <Bar dataKey="pos" name="Ventas POS" fill="#3B82F6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -153,7 +153,7 @@ export default function AdminAnalytics() {
             <YAxis tick={{ fill: '#71717A', fontSize: 11 }} domain={[0, 100]} />
             <Tooltip contentStyle={{ background: '#18181B', border: '1px solid #27272A', borderRadius: 8, color: '#fff' }} />
             <Legend />
-            <Line type="monotone" dataKey="retention" name="Retencion %" stroke="#E1FF01" strokeWidth={2} dot={{ fill: '#E1FF01' }} />
+            <Line type="monotone" dataKey="retention" name="Retencion %" stroke="#FF6600" strokeWidth={2} dot={{ fill: '#FF6600' }} />
             <Line type="monotone" dataKey="new" name="Nuevos" stroke="#3B82F6" strokeWidth={2} dot={{ fill: '#3B82F6' }} />
           </LineChart>
         </ResponsiveContainer>
@@ -202,7 +202,7 @@ export default function AdminAnalytics() {
             <XAxis dataKey="hour" tick={{ fill: '#71717A', fontSize: 10 }} interval={1} />
             <YAxis tick={{ fill: '#71717A', fontSize: 11 }} />
             <Tooltip contentStyle={{ background: '#18181B', border: '1px solid #27272A', borderRadius: 8, color: '#fff' }} />
-            <Bar dataKey="avg" name="Promedio diario" fill="#E1FF01" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="avg" name="Promedio diario" fill="#FF6600" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

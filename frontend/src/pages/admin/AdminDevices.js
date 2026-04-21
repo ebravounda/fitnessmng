@@ -435,7 +435,7 @@ export default function AdminDevices() {
                 <p className="text-zinc-500 mb-1"># Crear archivo .env en la Raspberry:</p>
                 <p className="text-emerald-400">nano ~/gymaccess/.env</p>
                 <p className="text-zinc-500 mt-2"># Contenido:</p>
-                <p className="text-amber-400">GYMACCESS_SERVER_URL=https://c.ingresoqr.com</p>
+                <p className="text-amber-400">GYMACCESS_SERVER_URL=https://api.gym24.app</p>
                 <p className="text-amber-400">GYMACCESS_GYM_TOKEN=<span className="text-white">PEGA_TU_TOKEN_DEL_GYM</span></p>
                 <p className="text-amber-400">GYMACCESS_DEVICE_ID=<span className="text-white">PEGA_TU_DEVICE_ID</span></p>
                 <p className="text-amber-400">GYMACCESS_QR_MODE=usb</p>
@@ -464,7 +464,7 @@ export default function AdminDevices() {
                 <p className="text-zinc-500"># Crear servicio:</p>
                 <p className="text-emerald-400">sudo bash -c 'cat &gt; /etc/systemd/system/gymaccess.service &lt;&lt; EOF</p>
                 <p className="text-amber-400">[Unit]</p>
-                <p className="text-amber-400">Description=IngresoQR Access Control</p>
+                <p className="text-amber-400">Description=Gym24 Access Control</p>
                 <p className="text-amber-400">After=network.target</p>
                 <p className="text-amber-400">[Service]</p>
                 <p className="text-amber-400">ExecStart=/home/pi/gymaccess-env/bin/python3 /home/pi/gymaccess/access_control.py</p>

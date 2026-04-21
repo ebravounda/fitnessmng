@@ -21,7 +21,7 @@ export default function AdminSettings() {
     phone: '',
     email: '',
     logo_url: '',
-    primary_color: '#E1FF01',
+    primary_color: '#FF6600',
     secondary_color: '',
     bg_color: '',
     menu_color: '',
@@ -140,7 +140,7 @@ export default function AdminSettings() {
         phone: response.data.phone || '',
         email: response.data.email || '',
         logo_url: response.data.logo_url || '',
-        primary_color: response.data.primary_color || '#E1FF01',
+        primary_color: response.data.primary_color || '#FF6600',
         secondary_color: response.data.secondary_color || '',
         bg_color: response.data.bg_color || '',
         menu_color: response.data.menu_color || '',
@@ -349,7 +349,7 @@ export default function AdminSettings() {
   };
 
   const presetColors = [
-    '#E1FF01', '#FF6B6B', '#4ECDC4', '#45B7D1',
+    '#FF6600', '#FF6B6B', '#4ECDC4', '#45B7D1',
     '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF8C00',
   ];
 
@@ -1449,7 +1449,7 @@ function DeploySection() {
       )}
 
       <p className="text-xs mt-4" style={{ color: 'var(--text-dim)' }}>
-        Proceso: Sube archivos .py por File Manager de c.ingresoqr.com → Clic "Sincronizar" → Clic "Reiniciar"
+        Proceso: Sube archivos .py por File Manager de api.gym24.app → Clic "Sincronizar" → Clic "Reiniciar"
       </p>
     </div>
   );

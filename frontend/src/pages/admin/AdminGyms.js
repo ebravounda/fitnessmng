@@ -32,11 +32,11 @@ export default function AdminGyms() {
   const [credentialsForm, setCredentialsForm] = useState({ email: '', password: '' });
   const [credentialsGym, setCredentialsGym] = useState(null);
   const [newGym, setNewGym] = useState({
-    name: '', address: '', phone: '', email: '', primary_color: '#E1FF01', max_members: null,
+    name: '', address: '', phone: '', email: '', primary_color: '#FF6600', max_members: null,
     business_type: 'gym', custom_domain: '', admin_email: '', admin_password: '', admin_name: ''
   });
   const [editGym, setEditGym] = useState({
-    name: '', address: '', phone: '', email: '', primary_color: '#E1FF01', max_members: null, business_type: 'gym', custom_domain: ''
+    name: '', address: '', phone: '', email: '', primary_color: '#FF6600', max_members: null, business_type: 'gym', custom_domain: ''
   });
 
   useEffect(() => { fetchGyms(); }, []);
@@ -61,7 +61,7 @@ export default function AdminGyms() {
         ? 'Gimnasio creado con administrador' 
         : 'Gimnasio creado exitosamente');
       setShowCreateModal(false);
-      setNewGym({ name: '', address: '', phone: '', email: '', primary_color: '#E1FF01', max_members: null, business_type: 'gym', custom_domain: '', admin_email: '', admin_password: '', admin_name: '' });
+      setNewGym({ name: '', address: '', phone: '', email: '', primary_color: '#FF6600', max_members: null, business_type: 'gym', custom_domain: '', admin_email: '', admin_password: '', admin_name: '' });
       fetchGyms();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al crear gimnasio');
@@ -75,7 +75,7 @@ export default function AdminGyms() {
       address: gym.address || '',
       phone: gym.phone || '',
       email: gym.email || '',
-      primary_color: gym.primary_color || '#E1FF01',
+      primary_color: gym.primary_color || '#FF6600',
       max_members: gym.max_members || null,
       business_type: gym.business_type || 'gym',
       custom_domain: gym.custom_domain || '',
@@ -263,7 +263,7 @@ export default function AdminGyms() {
                 <div>
                   <label className="text-sm text-zinc-400 mb-1 block">Dominio Personalizado</label>
                   <Input value={newGym.custom_domain} onChange={(e) => setNewGym({ ...newGym, custom_domain: e.target.value.toLowerCase() })} className="input-dark" placeholder="panel.sunegocio.com" data-testid="gym-custom-domain" />
-                  <p className="text-[10px] text-zinc-500 mt-1">El negocio debe apuntar un CNAME a app.ingresoqr.com</p>
+                  <p className="text-[10px] text-zinc-500 mt-1">El negocio debe apuntar un CNAME a gym24.app</p>
                 </div>
 
                 {/* Admin Credentials Section */}
@@ -524,7 +524,7 @@ export default function AdminGyms() {
               <div>
                 <label className="text-sm text-zinc-400 mb-1 block">Dominio Personalizado</label>
                 <Input value={editGym.custom_domain} onChange={(e) => setEditGym({ ...editGym, custom_domain: e.target.value.toLowerCase() })} className="input-dark" placeholder="panel.sunegocio.com" data-testid="edit-gym-custom-domain" />
-                <p className="text-[10px] text-zinc-500 mt-1">CNAME apuntando a app.ingresoqr.com</p>
+                <p className="text-[10px] text-zinc-500 mt-1">CNAME apuntando a gym24.app</p>
               </div>
             </div>
             <Button onClick={handleUpdateGym} className="w-full btn-gym-primary mt-4" data-testid="update-gym-btn">

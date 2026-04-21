@@ -80,7 +80,7 @@ export default function MemberLogin() {
           >
             <QrCode size={40} className="text-black" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight mb-2">IngresoQR</h1>
+          <h1 className="text-3xl font-black tracking-tight mb-2">Gym24</h1>
           <p className="text-zinc-400">Ingresa con tu código de socio</p>
         </div>
 

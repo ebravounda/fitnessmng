@@ -101,14 +101,14 @@ async def init_super_admin():
     if not existing:
         admin = {
             "id": "sa-default",
-            "email": "admin@gymaccess.com",
+            "email": "info@gym24.es",
             "password": hash_password("admin123"),
             "name": "Super Admin",
             "role": "super_admin",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.admins.insert_one(admin)
-        logger.info("Super admin created: admin@gymaccess.com / admin123")
+        logger.info("Super admin created: info@gym24.es / admin123")
 
 async def run_daily_at_midnight(func):
     """Utility: calculates seconds until next midnight UTC, sleeps, then runs func in a loop."""

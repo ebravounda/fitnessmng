@@ -1,7 +1,7 @@
 {
-  "short_name": "IngresoQR",
-  "name": "IngresoQR - Control de Acceso",
-  "description": "Sistema de control de acceso para gimnasios con QR",
+  "short_name": "Gym24",
+  "name": "Gym24 - Control de Acceso",
+  "description": "Gym24 - Sistema de control de acceso para gimnasios",
   "icons": [
     {
       "src": "logo192.png",
@@ -43,7 +43,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "IngresoQR"
+      "label": "Gym24"
     }
   ]
 }

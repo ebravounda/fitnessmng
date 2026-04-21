@@ -21,3 +21,4 @@ Jinja2==3.1.6
 pycryptodome==3.23.0
 redsys==0.3.1
 requests==2.32.5
+httpx==0.28.1

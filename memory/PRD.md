@@ -1,75 +1,55 @@
-# IngresoQR - Product Requirements Document
+# Gym24 - PRD
 
-## Original Problem Statement
-Create a comprehensive SaaS multi-tenant gym access control system ("IngresoQR"). The system requires a backend, an Admin dashboard, and a PWA for gym members. Core features include dynamic QR codes for access, physical turnstile control (Raspberry Pi), POS with thermal printing, role-based access, corporate branding, WHMCS integration for automated tenant lifecycle management, and multi-vertical support.
+## Problema Original
+Clonar sistema IngresoQR (SaaS multi-tenant de control de acceso para gimnasios) al dominio gym24.app con rediseño visual completo para que no se parezca al original.
 
-## Architecture
-- **Backend**: FastAPI (Python) on port 8001
-- **Frontend**: React PWA (CRA + craco)
-- **Database**: MongoDB
-- **Deployment**: Plesk on AWS EC2 (`c.ingresoqr.com` backend, `app.ingresoqr.com` frontend)
+## Arquitectura
+- **Backend**: FastAPI + MongoDB (Docker en Plesk, puerto 8003)
+- **Frontend**: React + Tailwind (build estático en Plesk httpdocs)
+- **Producción**: api.gym24.app (backend), gym24.app (frontend)
+- **MongoDB**: Contenedor separado mongo-gym24 (puerto 27019)
+- **Servidor**: Mismo servidor que ingresoqr.com (Plesk)
 
-## What's Been Implemented
-- Full multi-tenant gym management (gyms, members, plans, memberships)
-- Dynamic/Static QR codes for member access
-- Turnstile control (Raspberry Pi integration)
-- POS system with thermal printing
-- Role-based access (super_admin, gym_admin, gym_manager with permissions)
-- WHMCS 7.9.0 provisioning module
-- Member import from Excel (IsMyGym migration)
-- Bulk plan import from JSON
-- Bulk membership assignment with vencimientos data
-- Member expiration date editing with comments and audit log (NEW - Feb 2026)
-- RFID card assignment
-- Email system (welcome, reminders)
-- Stripe/MercadoPago payment integration
-- Gamification, routines, classes system
-- Auto-suspension cron for expired memberships
-- Excel export of members
-- Device management per member
+## Credenciales
+- Super Admin: info@gym24.es / admin123
 
-## Completed - Feb 2026
-- [x] Fixed duplicate useState bug in AdminMembers.js (showMembershipModal conflict)
-- [x] PUT /api/members/{member_id}/membership endpoint - edit expiration date with comment
-- [x] Edit Expiration Modal in AdminMembers.js (click on Vencimiento date)
-- [x] membership_edit permission for gym managers
-- [x] Audit logging in membership_logs collection
-- [x] GET /api/members/{member_id}/membership-logs endpoint - fetch change history
-- [x] Gym logo displayed correctly in PWA Layout (relative URL fix + object-contain for wide logos)
-- [x] Gym logo displayed in Admin Layout sidebar and mobile header
-- [x] "Historial de cambios" section in edit expiration modal showing who/when/what changed
-- [x] Redsys TPV Virtual integration - full payment flow (using official redsys library v0.3.1)
-- [x] Per-gym Redsys configuration (merchant code, terminal, secret key SHA-256, environment)
-- [x] Payment gateway selector (Ninguna/Redsys/Stripe/MercadoPago) - Super Admin only
-- [x] Stripe and Redsys config restricted to Super Admin only (gym admin cannot see)
-- [x] Fixed dashboard occupancy widget disappearing (Promise.all → Promise.allSettled + expiring memberships timezone bug)
-- [x] Redsys tested and working in production (La Fabrika - Ruralvía bank)
-
-## Pending / Backlog
-
-### P1 - High Priority
-- Facial Recognition Integration (face_recognition Python library)
-- VeriFactu Compliance (Spanish electronic invoicing for POS)
-- Class check-in / attendance tracking (QR check-in via PWA)
-
-### P2 - Medium Priority
-- WhatsApp AI Assistant (MyClaw)
-- "Live Class" Kiosk Screen
-- White-label Frontend for FitnessMNG client
-- AdminMembers.js refactoring (extract modals to separate components)
-
-## Deployment Commands (Plesk SSH)
+## Deploy
 ```bash
-cd /opt/gymaccess/frontend
-export PATH=$PATH:/usr/local/bin:/opt/plesk/node/20/bin
-npm install ajv@8 --legacy-peer-deps
-npx craco build
+cd /opt/gym24/repo && git pull origin main
+cp -r frontend/build/* /var/www/vhosts/gym24.app/httpdocs/
+docker restart gym24-api
 ```
 
-## Key API Endpoints
-- POST /api/auth/admin/login
-- GET /api/members
-- PUT /api/members/{member_id}/membership (edit expiration)
-- POST /api/members/import
-- POST /api/plans/import
-- POST /api/members/assign-memberships-bulk
+## Features Completadas
+
+### Sesión 1 (Abr 2026)
+- Clonado repo iqa completo al workspace
+- Cambio de admin email a info@gym24.es
+- Deploy Docker en Plesk (gym24-api puerto 8003, mongo-gym24 puerto 27019)
+- Configuración nginx proxy para api.gym24.app
+- Rediseño colores: #E1FF01 (verde lima) → #FF6600 (naranja)
+- Renombrado IngresoQR → Gym24 en todo el frontend
+- Nuevo favicon/logos PWA con logo F24
+- Fuentes: Outfit (headings) + DM Sans (body) — distintas a IngresoQR
+- Landing page: diseño con gradientes radiales, grid pattern, logo prominente
+- Admin Login: layout split-screen (izquierda decorativa, derecha formulario)
+- PWA Login: indicadores de código con dots, background effects
+- Nuevo tipo de negocio: Piscina (usuarios, abonos, tarifas, socorristas, taquilla, aforo)
+- Eliminado modelo Coworking
+- Eliminada sección "Despliegue Backend" de Configuración
+- Monitor RPi simplificado: solo IP pública, IP local, estado online/offline
+- Nuevos estilos CSS: stat-cards con gradientes, botones con sombra naranja, badges con bordes
+
+## Backlog
+
+### P0 - En progreso
+- Acabar rediseño PWA Home (QR + stats inspirados en Fitness 24 Manager)
+- Rediseñar dashboard cards admin
+
+### P1
+- Tarifa de acceso diario para piscinas
+- PWA bottom nav con iconos naranja estilizados
+
+### P2
+- Logo dinámico en sidebar admin
+- Modo kiosko para piscinas (venta de accesos diarios desde tablet)

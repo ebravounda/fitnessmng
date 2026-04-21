@@ -1233,11 +1233,6 @@ export default function AdminSettings() {
         </Button>
       </div>
       </>)}
-
-      {/* Deploy Tools - Super Admin Only */}
-      {isSuperAdmin && (
-        <DeploySection />
-      )}
     </div>
   );
 }

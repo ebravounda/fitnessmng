@@ -1,5 +1,5 @@
 // Dynamic labels based on business_type
-// Supported types: gym, condominium, hotel, coworking
+// Supported types: gym, condominium, hotel, pool
 
 const LABELS = {
   gym: {
@@ -113,19 +113,19 @@ const LABELS = {
     maxMembers: 'Capacidad maxima de huespedes',
     memberCapacity: 'Capacidad de huespedes',
   },
-  coworking: {
-    businessName: 'Coworking',
-    businessNamePlural: 'Coworkings',
-    member: 'Miembro',
-    members: 'Miembros',
-    membership: 'Suscripcion',
-    memberships: 'Suscripciones',
-    plan: 'Plan',
-    plans: 'Planes',
-    class: 'Evento',
-    classes: 'Eventos',
-    trainer: 'Community Manager',
-    trainers: 'Community Managers',
+  pool: {
+    businessName: 'Piscina',
+    businessNamePlural: 'Piscinas',
+    member: 'Usuario',
+    members: 'Usuarios',
+    membership: 'Abono',
+    memberships: 'Abonos',
+    plan: 'Tarifa',
+    plans: 'Tarifas',
+    class: 'Actividad',
+    classes: 'Actividades',
+    trainer: 'Socorrista',
+    trainers: 'Socorristas',
     attendance: 'Registro',
     schedule: 'Horario',
     schedules: 'Horarios',
@@ -133,30 +133,30 @@ const LABELS = {
     accesses: 'Accesos',
     entry: 'Entrada',
     exit: 'Salida',
-    guest: 'Invitado',
-    guests: 'Invitados',
-    routine: 'Recurso',
-    routines: 'Recursos',
+    guest: 'Visitante',
+    guests: 'Visitantes',
+    routine: 'Actividad',
+    routines: 'Actividades',
     gamification: 'Programa de Puntos',
-    pos: 'Cobros',
-    createBusiness: 'Crear Coworking',
-    newBusiness: 'Nuevo Coworking',
-    businessIcon: 'Laptop',
+    pos: 'Taquilla',
+    createBusiness: 'Crear Piscina',
+    newBusiness: 'Nueva Piscina',
+    businessIcon: 'Waves',
     welcomeMessage: 'Bienvenido a {name}',
-    memberCode: 'Codigo de miembro',
-    renewMembership: 'Renueva tu suscripcion',
-    expiredMembership: 'Tu suscripcion ha vencido',
-    activeMembership: 'Suscripcion activa',
-    maxMembers: 'Capacidad maxima de miembros',
-    memberCapacity: 'Capacidad de miembros',
+    memberCode: 'Codigo de usuario',
+    renewMembership: 'Renueva tu abono',
+    expiredMembership: 'Tu abono ha vencido',
+    activeMembership: 'Abono activo',
+    maxMembers: 'Aforo maximo',
+    memberCapacity: 'Aforo',
   }
 };
 
 export const BUSINESS_TYPES = [
   { value: 'gym', label: 'Gimnasio', icon: 'Dumbbell' },
+  { value: 'pool', label: 'Piscina', icon: 'Waves' },
   { value: 'condominium', label: 'Condominio', icon: 'Building' },
   { value: 'hotel', label: 'Hotel', icon: 'Hotel' },
-  { value: 'coworking', label: 'Coworking', icon: 'Laptop' },
 ];
 
 export function getLabels(businessType) {

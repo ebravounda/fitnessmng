@@ -1,12 +1,15 @@
-# Test Credentials
+# Test Credentials - Gym24
 
 ## Super Admin
-- Email: admin@gymaccess.com
+- Email: info@gym24.es
 - Password: admin123
-- Login URL: /admin/login
-- API Login: POST /api/auth/admin/login
+- URL: https://gym24.app/admin/login
 
-## Notes
-- Super Admin has full access to all features
-- The admin panel is at /admin/login
-- Production super admin is soporte@ingresoqr.com (different credentials)
+## API
+- Base URL: https://api.gym24.app
+- Health: https://api.gym24.app/api/
+
+## Infrastructure
+- Docker container: gym24-api (port 8003)
+- MongoDB container: mongo-gym24 (port 27019)
+- DB Name: gym24

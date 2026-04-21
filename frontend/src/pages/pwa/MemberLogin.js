@@ -45,19 +45,19 @@ export default function MemberLogin() {
 
   if (blocked) {
     return (
-      <div className="min-h-screen bg-[#09090B] flex items-center justify-center p-6 noise-overlay" data-testid="member-blocked-screen">
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6" data-testid="member-blocked-screen">
         <div className="relative z-10 w-full max-w-sm text-center space-y-6">
           <div className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-500/40 flex items-center justify-center mx-auto">
             <AlertOctagon size={48} className="text-red-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-black mb-2">Cuenta Bloqueada</h1>
-            <p className="text-zinc-400 text-sm">El acceso a tu gimnasio ha sido temporalmente suspendido.</p>
+            <h1 className="text-2xl font-black mb-2" style={{ fontFamily: 'Outfit' }}>Cuenta Bloqueada</h1>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>El acceso ha sido temporalmente suspendido.</p>
           </div>
-          <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800">
-            <p className="text-zinc-400 text-sm">Comunicate con la administracion de tu gimnasio para mas informacion.</p>
+          <div className="p-4 rounded-xl" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Comunicate con la administracion para mas informacion.</p>
           </div>
-          <button onClick={() => setBlocked(false)} className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+          <button onClick={() => setBlocked(false)} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
             Volver al inicio
           </button>
         </div>
@@ -66,48 +66,53 @@ export default function MemberLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B] flex items-center justify-center p-6 noise-overlay">
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-10"
-        style={{ backgroundImage: 'url(https://images.pexels.com/photos/6388373/pexels-photo-6388373.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940)' }}
-      />
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background effects */}
+      <div className="absolute top-[-30%] right-[-20%] w-[500px] h-[500px] rounded-full opacity-[0.06]" style={{ background: 'radial-gradient(circle, #FF6600, transparent 70%)' }} />
+      <div className="absolute bottom-[-20%] left-[-15%] w-[400px] h-[400px] rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, #FF6600, transparent 70%)' }} />
       
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-10">
-          <div 
-            className="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
-            style={{ backgroundColor: 'var(--gym-primary)' }}
-          >
-            <QrCode size={40} className="text-black" />
+          <div className="mb-6">
+            <img src="/logo192.png" alt="Gym24" className="w-20 h-20 mx-auto rounded-2xl" style={{ boxShadow: '0 0 40px rgba(255,102,0,0.15)' }} />
           </div>
-          <h1 className="text-3xl font-black tracking-tight mb-2">Gym24</h1>
-          <p className="text-zinc-400">Ingresa con tu código de socio</p>
+          <h1 className="text-4xl font-black tracking-tighter mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <span style={{ color: '#FF6600' }}>Gym</span>24
+          </h1>
+          <p style={{ color: 'var(--text-muted)' }} className="text-sm">Ingresa con tu codigo de socio</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-3 text-center">
-              Código de Socio
+            <label className="block text-sm font-medium mb-3 text-center" style={{ color: 'var(--text-secondary)' }}>
+              Codigo de Socio
             </label>
             <Input
               type="text"
               value={code}
               onChange={handleCodeChange}
-              placeholder="SD345FG"
+              placeholder="ABC123"
               className="input-dark text-center text-2xl font-mono tracking-[0.3em] h-16"
+              style={{ borderColor: code.length === 6 ? '#FF6600' : undefined }}
               maxLength={6}
               autoComplete="off"
               data-testid="member-code-input"
             />
-            <p className="text-center text-xs text-zinc-500 mt-2">
-              Tu código está en tu tarjeta de socio o email de bienvenida
+            <div className="flex justify-center gap-1.5 mt-3">
+              {[0,1,2,3,4,5].map(i => (
+                <div key={i} className="w-2 h-2 rounded-full transition-all" style={{ background: i < code.length ? '#FF6600' : '#222' }} />
+              ))}
+            </div>
+            <p className="text-center text-xs mt-3" style={{ color: 'var(--text-dim)' }}>
+              Tu codigo esta en tu tarjeta de socio o email de bienvenida
             </p>
           </div>
 
           <Button
             type="submit"
             disabled={loading || code.length < 6}
-            className="w-full btn-gym-primary h-14 text-lg"
+            className="w-full h-14 text-lg font-bold rounded-xl"
+            style={{ background: code.length === 6 ? 'linear-gradient(135deg, #FF6600, #E65C00)' : '#1a1a1a', color: code.length === 6 ? '#FFF' : '#555' }}
             data-testid="member-login-btn"
           >
             {loading ? (
@@ -119,8 +124,8 @@ export default function MemberLogin() {
           </Button>
         </form>
 
-        <p className="text-center text-xs text-zinc-600 mt-8">
-          ¿No tienes cuenta? Consulta en recepción
+        <p className="text-center text-xs mt-8" style={{ color: 'var(--text-dim)' }}>
+          ¿No tienes cuenta? Consulta en recepcion
         </p>
       </div>
     </div>

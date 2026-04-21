@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
-import { getGym, updateGym, getStripeConfig, updateStripeConfig, getMercadoPagoConfig, updateMercadoPagoConfig, updateMaxDevices, getMySubscription, getAvailableSaaSPlans, subscribeSaaSPlan } from '../../lib/api';
+import { getGym, updateGym, getStripeConfig, updateStripeConfig, getMercadoPagoConfig, updateMercadoPagoConfig, updateMaxDevices, getMySubscription, getAvailableSaaSPlans, subscribeSaaSPlan, getRedsysConfig, updateRedsysConfig, getPaymentGateway, setPaymentGateway } from '../../lib/api';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -57,6 +57,16 @@ export default function AdminSettings() {
   const [showMpKey, setShowMpKey] = useState(false);
   const [savingMp, setSavingMp] = useState(false);
 
+  // Redsys TPV config
+  const [redsysData, setRedsysData] = useState({ redsys_merchant_code: '', redsys_terminal: '001', redsys_secret_key: '', redsys_environment: 'sandbox' });
+  const [redsysStatus, setRedsysStatus] = useState({ enabled: false, has_credentials: false, masked_merchant_code: '', terminal: '', environment: 'sandbox' });
+  const [showRedsysKey, setShowRedsysKey] = useState(false);
+  const [savingRedsys, setSavingRedsys] = useState(false);
+
+  // Active payment gateway
+  const [gatewayInfo, setGatewayInfo] = useState({ active_gateway: 'none', stripe_configured: false, redsys_configured: false, mercadopago_configured: false });
+  const [savingGateway, setSavingGateway] = useState(false);
+
   // Currency
   const [gymCurrency, setGymCurrency] = useState('EUR');
   const [maxDevices, setMaxDevices] = useState(2);
@@ -79,6 +89,8 @@ export default function AdminSettings() {
       fetchGym();
       fetchStripeConfig();
       fetchMpConfig();
+      fetchRedsysConfig();
+      fetchGatewayInfo();
       fetchSubscription();
     } else {
       setLoading(false);
@@ -196,6 +208,64 @@ export default function AdminSettings() {
     } catch (error) { toast.error('Error al guardar moneda'); }
   };
 
+  const fetchRedsysConfig = async () => {
+    try {
+      const response = await getRedsysConfig(admin.gym_id);
+      setRedsysStatus(response.data);
+      setRedsysData(prev => ({ ...prev, redsys_terminal: response.data.terminal || '001', redsys_environment: response.data.environment || 'sandbox' }));
+    } catch (error) {
+      console.error('Error fetching Redsys config:', error);
+    }
+  };
+
+  const handleSaveRedsys = async () => {
+    if (!redsysData.redsys_merchant_code && !redsysStatus.has_credentials) {
+      toast.error('Ingresa el codigo de comercio');
+      return;
+    }
+    setSavingRedsys(true);
+    try {
+      const payload = { redsys_enabled: true, redsys_environment: redsysData.redsys_environment };
+      if (redsysData.redsys_merchant_code) payload.redsys_merchant_code = redsysData.redsys_merchant_code;
+      if (redsysData.redsys_terminal) payload.redsys_terminal = redsysData.redsys_terminal;
+      if (redsysData.redsys_secret_key) payload.redsys_secret_key = redsysData.redsys_secret_key;
+      await updateRedsysConfig(admin.gym_id, payload);
+      toast.success('Configuracion de Redsys guardada');
+      setRedsysData(prev => ({ ...prev, redsys_merchant_code: '', redsys_secret_key: '' }));
+      fetchRedsysConfig();
+      // Auto-activate Redsys as payment gateway
+      try { await setPaymentGateway(admin.gym_id, 'redsys'); fetchGatewayInfo(); } catch {}
+    } catch (error) {
+      toast.error('Error al guardar Redsys');
+    } finally { setSavingRedsys(false); }
+  };
+
+  const handleDisableRedsys = async () => {
+    try {
+      await updateRedsysConfig(admin.gym_id, { redsys_enabled: false });
+      toast.success('Redsys deshabilitado');
+      fetchRedsysConfig();
+    } catch (error) { toast.error('Error'); }
+  };
+
+  const fetchGatewayInfo = async () => {
+    try {
+      const res = await getPaymentGateway(admin.gym_id);
+      setGatewayInfo(res.data);
+    } catch (error) { console.error('Error fetching gateway:', error); }
+  };
+
+  const handleSetGateway = async (gateway) => {
+    setSavingGateway(true);
+    try {
+      await setPaymentGateway(admin.gym_id, gateway);
+      toast.success(gateway === 'none' ? 'Pasarela desactivada' : `${gateway.charAt(0).toUpperCase() + gateway.slice(1)} activada`);
+      fetchGatewayInfo();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al cambiar pasarela');
+    } finally { setSavingGateway(false); }
+  };
+
   const handleSaveAccount = async () => {
     if (!accountData.current_password) {
       toast.error('Debes ingresar tu contraseña actual');
@@ -267,6 +337,10 @@ export default function AdminSettings() {
       toast.success('Configuración de pagos guardada');
       setStripeData(prev => ({ ...prev, stripe_secret_key: '' }));
       fetchStripeConfig();
+      // Auto-activate Stripe as payment gateway
+      if (payload.stripe_secret_key) {
+        try { await setPaymentGateway(admin.gym_id, 'stripe'); fetchGatewayInfo(); } catch {}
+      }
     } catch (error) {
       toast.error('Error al guardar configuración de pagos');
     } finally {
@@ -384,11 +458,64 @@ export default function AdminSettings() {
       )}
 
       {admin?.gym_id && (<>
-      {/* Stripe / Payment Gateway Configuration */}
-      <div className="stat-card border-2 border-zinc-700/50">
+      {/* Payment Gateway Selector - Solo Super Admin */}
+      {(admin?.role === 'super_admin' || admin?.original_role === 'super_admin') && (
+      <div className="stat-card border-2 border-zinc-700/50" data-testid="gateway-selector-section">
         <div className="flex items-center gap-2 mb-6">
-          <CreditCard size={20} className="text-blue-400" />
-          <h3 className="font-bold text-lg">Pasarela de Pagos (Stripe)</h3>
+          <CreditCard size={20} style={{ color: 'var(--gym-primary)' }} />
+          <h3 className="font-bold text-lg">Pasarela de Pago Activa</h3>
+        </div>
+        <p className="text-xs text-zinc-500 mb-4">Selecciona la pasarela que usaran los socios para pagar sus membresias. Solo puede haber una activa a la vez.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { key: 'none', label: 'Ninguna', color: 'zinc', desc: 'Pagos desactivados' },
+            { key: 'redsys', label: 'Redsys', color: 'red', desc: gatewayInfo.redsys_configured ? 'Credenciales OK' : 'Sin configurar' },
+            { key: 'stripe', label: 'Stripe', color: 'blue', desc: gatewayInfo.stripe_configured ? 'Credenciales OK' : 'Sin configurar' },
+            { key: 'mercadopago', label: 'MercadoPago', color: 'cyan', desc: gatewayInfo.mercadopago_configured ? 'Credenciales OK' : 'Sin configurar' },
+          ].map(gw => (
+            <button
+              key={gw.key}
+              onClick={() => handleSetGateway(gw.key)}
+              disabled={savingGateway}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                gatewayInfo.active_gateway === gw.key
+                  ? `border-${gw.color}-500 bg-${gw.color}-500/10`
+                  : 'border-zinc-700 hover:border-zinc-500'
+              }`}
+              style={gatewayInfo.active_gateway === gw.key ? { borderColor: gw.key === 'none' ? '#71717a' : gw.key === 'redsys' ? '#ef4444' : gw.key === 'stripe' ? '#3b82f6' : '#06b6d4', background: gw.key === 'none' ? 'rgba(113,113,122,0.1)' : gw.key === 'redsys' ? 'rgba(239,68,68,0.1)' : gw.key === 'stripe' ? 'rgba(59,130,246,0.1)' : 'rgba(6,182,212,0.1)' } : {}}
+              data-testid={`gateway-${gw.key}-btn`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold text-sm">{gw.label}</span>
+                {gatewayInfo.active_gateway === gw.key && <CheckCircle size={16} className="text-emerald-400" />}
+              </div>
+              <p className={`text-[10px] ${gw.key !== 'none' && !gatewayInfo[`${gw.key}_configured`] ? 'text-amber-400' : 'text-zinc-500'}`}>{gw.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+      )}
+
+      {/* Stripe / Payment Gateway Configuration - Solo Super Admin */}
+      {(admin?.role === 'super_admin' || admin?.original_role === 'super_admin') && (
+      <div className="stat-card border-2 border-zinc-700/50">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <CreditCard size={20} className="text-blue-400" />
+            <h3 className="font-bold text-lg">Pasarela de Pagos (Stripe)</h3>
+          </div>
+          {stripeStatus.has_stripe_key && (
+            <button onClick={async () => {
+              if (!window.confirm('Desactivar Stripe para este gimnasio?')) return;
+              try {
+                await updateStripeConfig(admin.gym_id, { stripe_secret_key: '__REMOVE__', stripe_enabled: false });
+                toast.success('Stripe desactivado');
+                fetchStripeConfig();
+              } catch { toast.error('Error'); }
+            }} className="text-xs text-red-400 hover:text-red-300 px-3 py-1 rounded-lg border border-red-500/30 hover:bg-red-500/10 transition-colors" data-testid="stripe-disable-btn">
+              Desactivar
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-zinc-800/50">
@@ -467,6 +594,108 @@ export default function AdminSettings() {
           </Button>
         </div>
       </div>
+      )}
+
+      {/* Redsys TPV Virtual Configuration - Solo Super Admin */}
+      {(admin?.role === 'super_admin' || admin?.original_role === 'super_admin') && (
+      <div className="stat-card border-2 border-zinc-700/50" data-testid="redsys-config-section">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <CreditCard size={20} className="text-red-400" />
+            <h3 className="font-bold text-lg">TPV Virtual (Redsys)</h3>
+          </div>
+          {redsysStatus.enabled && (
+            <button onClick={handleDisableRedsys} className="text-xs text-red-400 hover:text-red-300 px-3 py-1 rounded-lg border border-red-500/30 hover:bg-red-500/10 transition-colors" data-testid="redsys-disable-btn">
+              Deshabilitar
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-zinc-800/50">
+          {redsysStatus.enabled && redsysStatus.has_credentials ? (
+            <>
+              <CheckCircle size={20} className="text-emerald-500 shrink-0" />
+              <div>
+                <p className="font-medium text-emerald-400">Redsys Configurado</p>
+                <p className="text-xs text-zinc-500">Comercio: {redsysStatus.masked_merchant_code} · Terminal: {redsysStatus.terminal} · {redsysStatus.environment === 'production' ? 'Produccion' : 'Sandbox'}</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <AlertTriangle size={20} className="text-amber-500 shrink-0" />
+              <div>
+                <p className="font-medium text-amber-400">Redsys No Configurado</p>
+                <p className="text-xs text-zinc-500">Configura las credenciales del TPV virtual de tu banco</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm text-zinc-400 mb-2 block">
+              Codigo de Comercio (FUC) {redsysStatus.has_credentials && '(dejar vacio para mantener)'}
+            </label>
+            <Input
+              value={redsysData.redsys_merchant_code}
+              onChange={(e) => setRedsysData({ ...redsysData, redsys_merchant_code: e.target.value })}
+              placeholder={redsysStatus.has_credentials ? 'Codigo actual guardado' : '999008881'}
+              className="input-dark"
+              data-testid="redsys-merchant-code-input"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-zinc-400 mb-2 block">Terminal</label>
+            <Input
+              value={redsysData.redsys_terminal}
+              onChange={(e) => setRedsysData({ ...redsysData, redsys_terminal: e.target.value })}
+              placeholder="001"
+              className="input-dark w-[120px]"
+              data-testid="redsys-terminal-input"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-zinc-400 mb-2 block">
+              Clave Secreta (SHA-256) {redsysStatus.has_credentials && '(dejar vacio para mantener)'}
+            </label>
+            <div className="relative">
+              <Input
+                type={showRedsysKey ? 'text' : 'password'}
+                value={redsysData.redsys_secret_key}
+                onChange={(e) => setRedsysData({ ...redsysData, redsys_secret_key: e.target.value })}
+                placeholder={redsysStatus.has_credentials ? 'Clave actual guardada' : 'Clave proporcionada por tu banco'}
+                className="input-dark pr-10"
+                data-testid="redsys-secret-key-input"
+              />
+              <button type="button" onClick={() => setShowRedsysKey(!showRedsysKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
+                {showRedsysKey ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <p className="text-xs text-zinc-500 mt-1">La clave HMAC SHA-256 que te proporciona tu entidad bancaria</p>
+          </div>
+
+          <div>
+            <label className="text-sm text-zinc-400 mb-2 block">Entorno</label>
+            <Select value={redsysData.redsys_environment} onValueChange={(v) => setRedsysData({ ...redsysData, redsys_environment: v })}>
+              <SelectTrigger className="w-[220px] bg-zinc-800 border-zinc-700" data-testid="redsys-environment-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-700">
+                <SelectItem value="sandbox">Sandbox (Pruebas)</SelectItem>
+                <SelectItem value="production">Produccion (Real)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button onClick={handleSaveRedsys} disabled={savingRedsys} className="btn-gym-primary" data-testid="save-redsys-btn">
+            <CreditCard size={18} className="mr-2" />
+            {savingRedsys ? 'Guardando...' : 'Activar y Guardar Redsys'}
+          </Button>
+        </div>
+      </div>
+      )}
 
       {/* Currency Configuration */}
       <div className="stat-card border-2 border-zinc-700/50">

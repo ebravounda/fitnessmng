@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -169,7 +169,130 @@ async def get_members(gym_id: Optional[str] = None, status: Optional[str] = None
     if status:
         query["status"] = status
     members = await db.members.find(query, {"_id": 0}).to_list(1000)
+
+    # Enrich with active membership data
+    member_ids = [m["id"] for m in members]
+    if member_ids:
+        memberships = await db.memberships.find(
+            {"member_id": {"$in": member_ids}, "status": {"$in": ["active", "expired"]}},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(5000)
+
+        plan_ids = list(set(m.get("plan_id") for m in memberships if m.get("plan_id")))
+        plans_map = {}
+        if plan_ids:
+            plans_list = await db.plans.find({"id": {"$in": plan_ids}}, {"_id": 0}).to_list(500)
+            plans_map = {p["id"]: p for p in plans_list}
+
+        membership_map = {}
+        for ms in memberships:
+            mid = ms["member_id"]
+            if mid not in membership_map:
+                membership_map[mid] = ms
+
+        for member in members:
+            ms = membership_map.get(member["id"])
+            if ms:
+                plan = plans_map.get(ms.get("plan_id"))
+                member["membership"] = {
+                    "plan_name": plan.get("name") if plan else None,
+                    "start_date": ms.get("start_date"),
+                    "end_date": ms.get("end_date"),
+                    "status": ms.get("status"),
+                    "payment_status": ms.get("payment_status"),
+                }
+            else:
+                member["membership"] = None
+
     return members
+
+@router.put("/members/{member_id}/membership")
+async def update_member_membership(member_id: str, data: dict, admin: dict = Depends(get_current_admin)):
+    """Update membership expiration date with comment. Gym admin or manager with membership_edit permission."""
+    check_permission(admin, "membership_edit")
+
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Socio no encontrado")
+
+    if admin["role"] != "super_admin" and member.get("gym_id") != admin.get("gym_id"):
+        raise HTTPException(status_code=403, detail="No tienes acceso a este socio")
+
+    new_end_date = data.get("end_date")
+    comment = data.get("comment", "").strip()
+
+    if not new_end_date:
+        raise HTTPException(status_code=400, detail="Fecha de vencimiento requerida")
+
+    # Find active membership
+    membership = await db.memberships.find_one(
+        {"member_id": member_id, "status": {"$in": ["active", "expired"]}},
+        sort=[("created_at", -1)]
+    )
+
+    if membership:
+        update_data = {
+            "end_date": new_end_date,
+            "modified_at": datetime.now(timezone.utc).isoformat(),
+            "modified_by": admin.get("email", admin.get("id")),
+        }
+        if comment:
+            update_data["modification_comment"] = comment
+
+        # Check if new date makes it active or expired
+        from datetime import datetime as dt
+        try:
+            end_dt = dt.strptime(new_end_date, "%Y-%m-%d")
+            update_data["status"] = "active" if end_dt >= dt.now() else "expired"
+        except ValueError:
+            pass
+
+        await db.memberships.update_one(
+            {"id": membership["id"]},
+            {"$set": update_data}
+        )
+
+        # Log the change
+        log_entry = {
+            "id": str(uuid.uuid4()),
+            "type": "membership_change",
+            "member_id": member_id,
+            "member_name": member.get("name"),
+            "gym_id": member.get("gym_id"),
+            "previous_end_date": membership.get("end_date"),
+            "new_end_date": new_end_date,
+            "comment": comment,
+            "changed_by": admin.get("email", admin.get("id")),
+            "changed_by_role": admin.get("role"),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.membership_logs.insert_one(log_entry)
+
+        return {"success": True, "message": f"Vencimiento actualizado a {new_end_date}"}
+    else:
+        raise HTTPException(status_code=404, detail="No se encontro membresia activa para este socio")
+
+
+@router.get("/members/{member_id}/membership-logs")
+async def get_membership_logs(member_id: str, admin: dict = Depends(get_current_admin)):
+    """Get membership change history for a member."""
+    check_permission(admin, "members_view")
+
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Socio no encontrado")
+
+    if admin["role"] != "super_admin" and member.get("gym_id") != admin.get("gym_id"):
+        raise HTTPException(status_code=403, detail="No tienes acceso a este socio")
+
+    logs = await db.membership_logs.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+
+    return logs
+
+
 
 @router.get("/members/{member_id}")
 async def get_member(member_id: str, admin: dict = Depends(get_current_admin)):
@@ -455,3 +578,279 @@ async def update_guest_permission(
         {"$set": {"can_bring_guests": can_bring_guests, "max_guests_per_month": max_guests_per_month}}
     )
     return {"message": "Guest permission updated"}
+
+
+@router.post("/members/import")
+async def import_members(
+    file: UploadFile = File(...),
+    gym_id: str = Form(...),
+    keep_codes: bool = Form(True),
+    admin: dict = Depends(get_current_admin)
+):
+    check_role(admin, ["super_admin"])
+
+    gym = await db.gyms.find_one({"id": gym_id})
+    if not gym:
+        raise HTTPException(status_code=404, detail="Gimnasio no encontrado")
+
+    import openpyxl
+
+    try:
+        content = await file.read()
+        wb = openpyxl.load_workbook(io.BytesIO(content))
+        ws = wb.active
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al leer el archivo Excel: {str(e)}")
+
+    headers = [cell.value for cell in ws[1]]
+    if not headers or len(headers) < 2:
+        raise HTTPException(status_code=400, detail="El archivo no tiene headers validos")
+
+    header_map = {}
+    for i, h in enumerate(headers):
+        if not h:
+            continue
+        hl = h.lower().strip()
+        if 'nombre' in hl and 'completo' in hl:
+            header_map['nombre_completo'] = i
+        elif 'nombre' in hl and 'completo' not in hl and 'factura' not in hl:
+            header_map['nombre'] = i
+        elif 'email' in hl and 'factura' not in hl:
+            header_map['email'] = i
+        elif 'tel' in hl:
+            header_map['telefono'] = i
+        elif 'dni' in hl or 'documento' in hl:
+            header_map['dni'] = i
+        elif 'nacimiento' in hl:
+            header_map['fecha_nacimiento'] = i
+        elif 'alta' in hl:
+            header_map['fecha_alta'] = i
+        elif 'baja' in hl:
+            header_map['fecha_baja'] = i
+        elif hl in ['codigo', 'código', 'code']:
+            header_map['codigo'] = i
+        elif 'socio' in hl and 'num' in hl:
+            header_map['numero_socio'] = i
+        elif 'cuota' in hl and 'tipo' not in hl:
+            header_map['cuota'] = i
+        elif 'tipo' in hl and 'cuota' in hl:
+            header_map['tipo_cuota'] = i
+        elif 'activo' in hl:
+            header_map['activo'] = i
+        elif 'observ' in hl:
+            header_map['observaciones'] = i
+
+    imported = 0
+    skipped = 0
+    errors = []
+    existing_codes = set()
+
+    if keep_codes:
+        cursor = db.members.find({"gym_id": gym_id}, {"code": 1, "_id": 0})
+        async for doc in cursor:
+            if doc.get("code"):
+                existing_codes.add(doc["code"])
+
+    for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        try:
+            nombre_completo = ''
+            if 'nombre_completo' in header_map:
+                nombre_completo = str(row[header_map['nombre_completo']] or '').strip()
+            elif 'nombre' in header_map:
+                nombre_completo = str(row[header_map['nombre']] or '').strip()
+
+            if not nombre_completo:
+                continue
+
+            email = str(row[header_map['email']] or '').strip() if 'email' in header_map else ''
+            phone = str(row[header_map['telefono']] or '').strip() if 'telefono' in header_map else ''
+            dni = str(row[header_map['dni']] or '').strip() if 'dni' in header_map else ''
+
+            # Skip if email already exists in this gym
+            if email:
+                existing = await db.members.find_one({"email": email, "gym_id": gym_id})
+                if existing:
+                    skipped += 1
+                    continue
+
+            # Handle member code
+            code = ''
+            if keep_codes and 'codigo' in header_map:
+                code = str(row[header_map['codigo']] or '').strip()
+                if code and code in existing_codes:
+                    code = ''  # Code already taken, generate new one
+
+            if not code:
+                code = generate_member_code()
+                while await db.members.find_one({"code": code}):
+                    code = generate_member_code()
+
+            existing_codes.add(code)
+
+            # Determine status
+            activo_val = str(row[header_map['activo']] or '').strip().lower() if 'activo' in header_map else 'si'
+            status = 'active' if activo_val in ['si', 'sí', 'yes', 'true', '1', 'activo'] else 'suspended'
+
+            cuota = str(row[header_map['cuota']] or '').strip() if 'cuota' in header_map else ''
+            tipo_cuota = str(row[header_map['tipo_cuota']] or '').strip() if 'tipo_cuota' in header_map else ''
+            observaciones = str(row[header_map['observaciones']] or '').strip() if 'observaciones' in header_map else ''
+            fecha_alta = str(row[header_map['fecha_alta']] or '').strip() if 'fecha_alta' in header_map else ''
+
+            member_dict = {
+                "id": str(uuid.uuid4()),
+                "name": nombre_completo,
+                "email": email if email else None,
+                "phone": phone if phone else None,
+                "dni": dni if dni else None,
+                "gym_id": gym_id,
+                "code": code,
+                "status": status,
+                "gender": "prefer_not_to_say",
+                "imported": True,
+                "import_source": "ismygym",
+                "import_data": {
+                    "cuota": cuota,
+                    "tipo_cuota": tipo_cuota,
+                    "fecha_alta_original": fecha_alta,
+                    "observaciones": observaciones,
+                },
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+
+            if status == 'suspended':
+                member_dict["suspension_type"] = "manual"
+                member_dict["suspension_reason"] = "Importado como inactivo desde IsMyGym"
+
+            await db.members.insert_one(member_dict)
+            member_dict.pop("_id", None)
+            imported += 1
+
+        except Exception as e:
+            errors.append(f"Fila {row_num}: {str(e)}")
+            if len(errors) > 50:
+                break
+
+    return {
+        "success": True,
+        "imported": imported,
+        "skipped": skipped,
+        "errors": len(errors),
+        "error_details": errors[:10],
+        "message": f"Importacion completada: {imported} socios importados, {skipped} omitidos (email duplicado), {len(errors)} errores"
+    }
+
+
+@router.post("/members/assign-memberships-bulk")
+async def assign_memberships_bulk(data: dict, admin: dict = Depends(get_current_admin)):
+    """Assign memberships to imported members using vencimientos data"""
+    check_role(admin, ["super_admin"])
+
+    gym_id = data.get("gym_id")
+    vencimientos = data.get("vencimientos", {})
+    
+    if not gym_id or not vencimientos:
+        raise HTTPException(status_code=400, detail="gym_id y vencimientos requeridos")
+
+    gym = await db.gyms.find_one({"id": gym_id})
+    if not gym:
+        raise HTTPException(status_code=404, detail="Gimnasio no encontrado")
+
+    plans = await db.plans.find({"gym_id": gym_id, "active": True}).to_list(100)
+    
+    assigned = 0
+    skipped = 0
+    no_plan = 0
+    errors = []
+
+    for ismygym_id, info in vencimientos.items():
+        try:
+            fecha_hasta = info.get("fecha_hasta", "").strip()
+            if not fecha_hasta:
+                skipped += 1
+                continue
+
+            codigo = info.get("codigo", "").strip()
+            email = info.get("email", "").strip()
+            importe_str = info.get("importe", "0").replace("€", "").replace(",", ".").strip()
+            
+            try:
+                importe = float(importe_str) if importe_str else 0
+            except:
+                importe = 0
+
+            # Find member by code or email
+            member = None
+            if codigo:
+                member = await db.members.find_one({"code": codigo, "gym_id": gym_id})
+            if not member and email:
+                member = await db.members.find_one({"email": email, "gym_id": gym_id})
+            
+            if not member:
+                skipped += 1
+                continue
+
+            # Check if already has active membership
+            existing = await db.memberships.find_one({
+                "member_id": member["id"],
+                "status": "active"
+            })
+            if existing:
+                skipped += 1
+                continue
+
+            # Find matching plan by price
+            matched_plan = None
+            for p in plans:
+                if abs(p.get("price", 0) - importe) < 0.5:
+                    matched_plan = p
+                    break
+            
+            if not matched_plan and plans:
+                matched_plan = plans[0]
+
+            if not matched_plan:
+                no_plan += 1
+                continue
+
+            # Parse fecha_hasta (dd/mm/yyyy)
+            try:
+                parts = fecha_hasta.split("/")
+                end_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+            except:
+                errors.append(f"Fecha invalida: {fecha_hasta} ({info.get('nombre', '')})")
+                continue
+
+            # Calculate start date from end date minus plan duration
+            from datetime import datetime as dt
+            end_dt = dt.strptime(end_date, "%Y-%m-%d")
+            start_dt = end_dt - timedelta(days=matched_plan.get("duration_days", 30))
+
+            membership = {
+                "id": str(uuid.uuid4()),
+                "member_id": member["id"],
+                "plan_id": matched_plan["id"],
+                "gym_id": gym_id,
+                "start_date": start_dt.strftime("%Y-%m-%d"),
+                "end_date": end_date,
+                "status": "active" if end_dt >= dt.now() else "expired",
+                "payment_status": "paid",
+                "imported": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+
+            await db.memberships.insert_one(membership)
+            membership.pop("_id", None)
+            assigned += 1
+
+        except Exception as e:
+            errors.append(f"{info.get('nombre', '')}: {str(e)}")
+
+    return {
+        "success": True,
+        "assigned": assigned,
+        "skipped": skipped,
+        "no_plan": no_plan,
+        "errors": len(errors),
+        "error_details": errors[:10],
+        "message": f"Asignacion completada: {assigned} membresias creadas, {skipped} omitidos, {no_plan} sin plan, {len(errors)} errores"
+    }

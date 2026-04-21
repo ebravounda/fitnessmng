@@ -134,7 +134,11 @@ async def validate_access(validation: AccessValidation):
         membership = await db.memberships.find_one({"member_id": member["id"], "status": "active"}, {"_id": 0})
         if not membership:
             return {"valid": False, "reason": "Sin membresia activa", "access_type": "rfid"}
-        end_date = datetime.fromisoformat(membership["end_date"].replace('Z', '+00:00'))
+        end_str = membership["end_date"]
+        if "T" in end_str or "+" in end_str:
+            end_date = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+        else:
+            end_date = datetime.strptime(end_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
         if end_date < datetime.now(timezone.utc):
             await db.memberships.update_one({"id": membership["id"]}, {"$set": {"status": "expired"}})
             return {"valid": False, "reason": "Membresia vencida", "access_type": "rfid"}
@@ -204,7 +208,11 @@ async def validate_access(validation: AccessValidation):
     membership = await db.memberships.find_one({"member_id": member["id"], "status": "active"}, {"_id": 0})
     if not membership:
         return {"valid": False, "reason": "No active membership"}
-    end_date = datetime.fromisoformat(membership["end_date"].replace('Z', '+00:00'))
+    end_str = membership["end_date"]
+    if "T" in end_str or "+" in end_str:
+        end_date = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+    else:
+        end_date = datetime.strptime(end_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
     if end_date < datetime.now(timezone.utc):
         await db.memberships.update_one({"id": membership["id"]}, {"$set": {"status": "expired"}})
         return {"valid": False, "reason": "Membership expired"}
@@ -380,8 +388,8 @@ async def get_member_access_stats(member_id: str, days: int = 30, admin: dict = 
 
 @router.put("/members/{member_id}/qr-mode")
 async def set_member_qr_mode(member_id: str, body: dict, admin: dict = Depends(get_current_admin)):
-    if admin["role"] != "super_admin":
-        raise HTTPException(status_code=403, detail="Solo el super admin puede asignar QR estatico")
+    if admin["role"] not in ("super_admin", "gym_admin") and admin.get("original_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="No tienes permiso para cambiar el modo QR")
     qr_mode = body.get("qr_mode", "dynamic")
     if qr_mode not in ("dynamic", "static"):
         raise HTTPException(status_code=400, detail="qr_mode debe ser 'dynamic' o 'static'")
@@ -407,3 +415,80 @@ async def get_hourly_access_stats(gym_id: Optional[str] = None, admin: dict = De
         except (IndexError, KeyError):
             pass
     return [{"hour": k, "accesos": v} for k, v in hourly.items()]
+
+
+
+@router.get("/access/display/{gym_id}")
+async def get_display_data(gym_id: str):
+    """Public endpoint for kiosk display - shows occupancy and recent access with initials only (LOPD)"""
+    gym = await db.gyms.find_one({"id": gym_id}, {"_id": 0})
+    if not gym:
+        raise HTTPException(status_code=404, detail="Gimnasio no encontrado")
+
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Occupancy
+    query = {"gym_id": gym_id, "timestamp": {"$gte": today_start.isoformat()}}
+    entries = await db.access_logs.count_documents({**query, "direction": "entrada"})
+    exits = await db.access_logs.count_documents({**query, "direction": "salida"})
+    current = max(0, entries - exits)
+    max_capacity = gym.get("max_capacity")
+
+    # Recent access logs (last 10) - only initials for LOPD
+    recent_logs = await db.access_logs.find(
+        {"gym_id": gym_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(10).to_list(10)
+
+    def get_initials(name):
+        if not name:
+            return "?"
+        parts = name.strip().split()
+        if len(parts) >= 2:
+            return (parts[0][0] + ". " + parts[-1][0] + ".").upper()
+        return (parts[0][0] + ".").upper()
+
+    display_logs = []
+    for log in recent_logs:
+        display_logs.append({
+            "initials": get_initials(log.get("member_name", log.get("guest_name", ""))),
+            "direction": log.get("direction", "entrada"),
+            "timestamp": log.get("timestamp"),
+            "is_guest": log.get("is_guest", False),
+        })
+
+    # Recent access events (approved + denied) - last 5
+    recent_events = await db.access_events.find(
+        {"gym_id": gym_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(5).to_list(5)
+
+    return {
+        "gym_name": gym.get("name"),
+        "logo_url": gym.get("logo_url"),
+        "primary_color": gym.get("primary_color", "#10b981"),
+        "current_occupancy": current,
+        "entries_today": entries,
+        "exits_today": exits,
+        "max_capacity": max_capacity,
+        "recent_access": display_logs,
+        "recent_events": recent_events,
+    }
+
+
+@router.post("/access/event")
+async def log_access_event(body: dict):
+    """Log access event (approved or denied) for kiosk display"""
+    event = {
+        "id": str(uuid.uuid4()),
+        "gym_id": body.get("gym_id"),
+        "approved": body.get("approved", False),
+        "initials": body.get("initials", "?"),
+        "direction": body.get("direction", "entrada"),
+        "reason": body.get("reason", ""),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.access_events.insert_one(event)
+    event.pop("_id", None)
+    return {"ok": True}

@@ -50,6 +50,16 @@ export const suspendMember = (id, reason) => axios.post(`${API}/members/${id}/su
 export const deleteMember = (id) => axios.delete(`${API}/members/${id}`);
 export const checkExpiredMemberships = () => axios.post(`${API}/members/check-expired-memberships`);
 export const registerMember = (data) => axios.post(`${API}/members/register`, data);
+export const importMembers = (formData) => axios.post(`${API}/members/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const assignMembershipsBulk = (data) => axios.post(`${API}/members/assign-memberships-bulk`, data);
+export const updateMemberMembership = (memberId, data) => axios.put(`${API}/members/${memberId}/membership`, data);
+export const getMembershipLogs = (memberId) => axios.get(`${API}/members/${memberId}/membership-logs`);
+export const getRedsysConfig = (gymId) => axios.get(`${API}/gyms/${gymId}/redsys-config`);
+export const updateRedsysConfig = (gymId, data) => axios.put(`${API}/gyms/${gymId}/redsys-config`, data);
+export const initiateRedsysPayment = (data) => axios.post(`${API}/redsys/initiate`, data);
+export const getRedsysPaymentStatus = (orderNumber) => axios.get(`${API}/redsys/status/${orderNumber}`);
+export const getPaymentGateway = (gymId) => axios.get(`${API}/gyms/${gymId}/payment-gateway`);
+export const setPaymentGateway = (gymId, gateway) => axios.put(`${API}/gyms/${gymId}/payment-gateway`, { gateway });
 
 // Plans
 export const getPlans = (gymId) => {
@@ -60,6 +70,7 @@ export const getPlans = (gymId) => {
 export const getPlansPublic = (gymId) => axios.get(`${API}/plans/public/${gymId}`);
 export const createPlan = (data) => axios.post(`${API}/plans`, data);
 export const deletePlan = (id) => axios.delete(`${API}/plans/${id}`);
+export const importPlans = (data) => axios.post(`${API}/plans/import`, data);
 
 // Memberships
 export const getMemberships = (gymId, memberId) => {

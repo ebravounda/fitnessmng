@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
-import { getMembers, createMember, updateMember, approveMember, suspendMember, deleteMember, getPlans, createMembership, checkExpiredMemberships, getGyms, setMemberQRMode, uploadAvatarAdmin, getMemberDevices, deactivateDevice, deactivateAllDevices, getMemberEmails, resendEmail, cleanupInactiveMembers, assignRFID } from '../../lib/api';
+import { getMembers, createMember, updateMember, approveMember, suspendMember, deleteMember, getPlans, createMembership, checkExpiredMemberships, getGyms, setMemberQRMode, uploadAvatarAdmin, getMemberDevices, deactivateDevice, deactivateAllDevices, getMemberEmails, resendEmail, cleanupInactiveMembers, assignRFID, importMembers, assignMembershipsBulk, updateMemberMembership, getMembershipLogs } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -12,7 +12,7 @@ import {
   Search, Plus, MoreVertical, Check,
   UserPlus, CreditCard, Pencil, Trash2, Ban, CheckCircle,
   AlertTriangle, RefreshCw, PauseCircle, Banknote, Receipt, QrCode, Camera,
-  Mail, Phone, Copy, X as XIcon, Smartphone, Building2, Loader2, Send
+  Mail, Phone, Copy, X as XIcon, Smartphone, Building2, Loader2, Send, Upload, FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../../components/ui/dropdown-menu';
@@ -107,6 +107,26 @@ export default function AdminMembers() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [gyms, setGyms] = useState([]);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importGymId, setImportGymId] = useState('');
+  const [importKeepCodes, setImportKeepCodes] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const fileInputRef = useRef(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignFile, setAssignFile] = useState(null);
+  const [assignGymId, setAssignGymId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [assignResult, setAssignResult] = useState(null);
+  const [assignPreview, setAssignPreview] = useState(null);
+  const assignFileRef = useRef(null);
+  const [showEditExpirationModal, setShowEditExpirationModal] = useState(false);
+  const [membershipMember, setMembershipMember] = useState(null);
+  const [membershipDate, setMembershipDate] = useState('');
+  const [membershipComment, setMembershipComment] = useState('');
+  const [savingMembership, setSavingMembership] = useState(false);
+  const [membershipLogs, setMembershipLogs] = useState([]);
 
   useEffect(() => { fetchMembers(); fetchPlans(); if (isSuperAdmin) fetchGyms(); }, [statusFilter]);
 
@@ -315,6 +335,53 @@ export default function AdminMembers() {
     return gym?.name || '';
   };
 
+  const handleImport = async () => {
+    if (!importFile) { toast.error('Selecciona un archivo Excel'); return; }
+    if (!importGymId) { toast.error('Selecciona un gimnasio destino'); return; }
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('gym_id', importGymId);
+      formData.append('keep_codes', importKeepCodes);
+      const res = await importMembers(formData);
+      setImportResult(res.data);
+      toast.success(res.data.message);
+      fetchMembers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error en la importacion');
+      setImportResult({ success: false, message: error.response?.data?.detail || 'Error' });
+    } finally { setImporting(false); }
+  };
+
+  const handleAssignBulk = async () => {
+    if (!assignPreview || !assignGymId) { toast.error('Selecciona gym y archivo'); return; }
+    setAssigning(true); setAssignResult(null);
+    try {
+      const res = await assignMembershipsBulk({ gym_id: assignGymId, vencimientos: assignPreview });
+      setAssignResult(res.data);
+      toast.success(res.data.message);
+      fetchMembers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error');
+    } finally { setAssigning(false); }
+  };
+
+  const handleUpdateMembership = async () => {
+    if (!membershipMember || !membershipDate) { toast.error('Fecha requerida'); return; }
+    setSavingMembership(true);
+    try {
+      await updateMemberMembership(membershipMember.id, { end_date: membershipDate, comment: membershipComment });
+      toast.success('Vencimiento actualizado');
+      setShowMembershipModal(false);
+      setMembershipComment('');
+      fetchMembers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al actualizar');
+    } finally { setSavingMembership(false); }
+  };
+
   const getStatusBadge = (status, member) => {
     const badges = { active: 'badge-success', pending: 'badge-warning', blocked: 'badge-danger', suspended: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' };
     const labels = { active: 'Activo', pending: 'Pendiente', blocked: 'Bloqueado', suspended: 'Suspendido' };
@@ -362,6 +429,20 @@ export default function AdminMembers() {
                 <Plus size={20} className="mr-2" /> Nuevo {labels.member}
               </Button>
             </DialogTrigger>
+          {isSuperAdmin && (
+            <Button variant="outline" className="border-emerald-700 text-emerald-400 hover:bg-emerald-900/30"
+              onClick={() => { setShowImportModal(true); setImportResult(null); setImportFile(null); }}
+              data-testid="import-members-btn">
+              <Upload size={16} className="mr-2" /> Importar Socios
+            </Button>
+          )}
+          {isSuperAdmin && (
+            <Button variant="outline" className="border-amber-700 text-amber-400 hover:bg-amber-900/30"
+              onClick={() => { setShowAssignModal(true); setAssignResult(null); setAssignFile(null); setAssignPreview(null); }}
+              data-testid="assign-memberships-btn">
+              <FileSpreadsheet size={16} className="mr-2" /> Asignar Membresias
+            </Button>
+          )}
             <DialogContent className="bg-zinc-900 border-zinc-800">
               <DialogHeader><DialogTitle>Crear Nuevo {labels.member}</DialogTitle></DialogHeader>
               <div className="space-y-4 mt-4">
@@ -440,6 +521,8 @@ export default function AdminMembers() {
               <th className="text-left p-3 text-zinc-400 font-medium text-xs uppercase tracking-wider">Socio</th>
               <th className="text-left p-3 text-zinc-400 font-medium text-xs uppercase tracking-wider">Codigo</th>
               {isSuperAdmin && <th className="text-left p-3 text-zinc-400 font-medium text-xs uppercase tracking-wider">Gimnasio</th>}
+              <th className="text-left p-3 text-zinc-400 font-medium text-xs uppercase tracking-wider">Plan</th>
+              <th className="text-center p-3 text-zinc-400 font-medium text-xs uppercase tracking-wider">Vencimiento</th>
               <th className="text-center p-3 text-zinc-400 font-medium text-xs uppercase tracking-wider">Estado</th>
               <th className="text-center p-3 text-zinc-400 font-medium text-xs uppercase tracking-wider w-[100px]">Contacto</th>
               <th className="text-right p-3 w-[50px]"></th>
@@ -447,9 +530,9 @@ export default function AdminMembers() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-8"><div className="skeleton h-4 w-32 mx-auto" /></td></tr>
+              <tr><td colSpan={8} className="text-center py-8"><div className="skeleton h-4 w-32 mx-auto" /></td></tr>
             ) : filteredMembers.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-zinc-500 py-8">No se encontraron socios</td></tr>
+              <tr><td colSpan={8} className="text-center text-zinc-500 py-8">No se encontraron socios</td></tr>
             ) : (
               filteredMembers.map((member) => (
                 <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors group">
@@ -478,6 +561,40 @@ export default function AdminMembers() {
                       <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{getGymName(member.gym_id)}</span>
                     </td>
                   )}
+                  <td className="p-3">
+                    {member.membership ? (
+                      <span className="text-xs text-zinc-300">{member.membership.plan_name || '-'}</span>
+                    ) : (
+                      <span className="text-xs text-zinc-600">Sin plan</span>
+                    )}
+                  </td>
+                  <td className="p-3 text-center">
+                    {member.membership?.end_date ? (
+                      <span 
+                        onClick={() => { 
+                          setMembershipMember(member); 
+                          setMembershipDate(member.membership.end_date); 
+                          setMembershipComment('');
+                          setMembershipLogs([]);
+                          setShowEditExpirationModal(true);
+                          getMembershipLogs(member.id).then(res => setMembershipLogs(res.data)).catch(() => {});
+                        }}
+                        className={`text-xs font-medium px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition-opacity ${
+                          new Date(member.membership.end_date) < new Date() 
+                            ? 'bg-red-900/30 text-red-400' 
+                            : new Date(member.membership.end_date) < new Date(Date.now() + 7 * 86400000) 
+                              ? 'bg-yellow-900/30 text-yellow-400' 
+                              : 'bg-emerald-900/30 text-emerald-400'
+                        }`}
+                        title="Clic para editar vencimiento"
+                        data-testid={`edit-membership-${member.id}`}
+                      >
+                        {new Date(member.membership.end_date).toLocaleDateString('es-ES')}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-zinc-600">-</span>
+                    )}
+                  </td>
                   <td className="p-3 text-center">{getStatusBadge(member.status, member)}</td>
                   <td className="p-3 text-center relative">
                     <button
@@ -539,7 +656,7 @@ export default function AdminMembers() {
                             <Trash2 size={16} className="mr-2" /> Eliminar
                           </DropdownMenuItem>
                         )}
-                        {isSuperAdmin && (
+                        {(isSuperAdmin || admin?.role === 'gym_admin') && (
                           <>
                             <DropdownMenuSeparator className="bg-zinc-700" />
                             <DropdownMenuItem onClick={async () => {
@@ -858,6 +975,305 @@ export default function AdminMembers() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Members Modal */}
+      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet size={18} /> Importar Socios desde Excel
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-zinc-400 mb-1 block">Gimnasio destino</label>
+              <Select value={importGymId} onValueChange={setImportGymId}>
+                <SelectTrigger className="bg-zinc-800 border-zinc-700" data-testid="import-gym-select">
+                  <SelectValue placeholder="Seleccionar gimnasio" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  {gyms.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-400 mb-2 block">Archivo Excel (.xlsx)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setImportFile(e.target.files[0])}
+                className="hidden"
+                data-testid="import-file-input"
+              />
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-zinc-700 rounded-xl p-6 text-center cursor-pointer hover:border-zinc-500 transition-colors"
+              >
+                {importFile ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <FileSpreadsheet size={24} className="text-emerald-400" />
+                    <div className="text-left">
+                      <p className="font-medium">{importFile.name}</p>
+                      <p className="text-xs text-zinc-500">{(importFile.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Upload size={32} className="mx-auto text-zinc-600 mb-2" />
+                    <p className="text-zinc-400 text-sm">Haz clic para seleccionar archivo</p>
+                    <p className="text-zinc-600 text-xs mt-1">Formato: .xlsx</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="keepCodes"
+                checked={importKeepCodes}
+                onChange={(e) => setImportKeepCodes(e.target.checked)}
+                className="rounded"
+                data-testid="import-keep-codes"
+              />
+              <label htmlFor="keepCodes" className="text-sm text-zinc-300">
+                Mantener codigos de socio originales
+              </label>
+            </div>
+
+            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <p className="text-xs text-zinc-400">
+                El Excel debe tener headers en la primera fila. Columnas reconocidas: 
+                <span className="text-zinc-300"> Nombre Completo, Email, Telefono, DNI, Codigo, Fecha Alta, Cuota, Activo</span>.
+                Los socios con email duplicado se omitiran.
+              </p>
+            </div>
+
+            {importResult && (
+              <div className={`p-4 rounded-lg border ${importResult.success ? 'bg-emerald-900/20 border-emerald-700' : 'bg-red-900/20 border-red-700'}`}>
+                <p className="font-medium text-sm">{importResult.message}</p>
+                {importResult.imported > 0 && (
+                  <div className="mt-2 text-xs space-y-1 text-zinc-300">
+                    <p>Importados: <span className="text-emerald-400 font-bold">{importResult.imported}</span></p>
+                    <p>Omitidos (duplicados): <span className="text-yellow-400">{importResult.skipped}</span></p>
+                    {importResult.errors > 0 && <p>Errores: <span className="text-red-400">{importResult.errors}</span></p>}
+                  </div>
+                )}
+                {importResult.error_details?.length > 0 && (
+                  <div className="mt-2 text-xs text-red-400 max-h-20 overflow-y-auto">
+                    {importResult.error_details.map((e, i) => <p key={i}>{e}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button 
+              onClick={handleImport} 
+              disabled={importing || !importFile || !importGymId}
+              className="w-full btn-gym-primary"
+              data-testid="import-submit-btn"
+            >
+              {importing ? (
+                <><Loader2 size={16} className="mr-2 animate-spin" /> Importando...</>
+              ) : (
+                <><Upload size={16} className="mr-2" /> Importar Socios</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Memberships Modal */}
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet size={18} /> Asignar Membresias Masivamente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-zinc-400 mb-1 block">Gimnasio</label>
+              <Select value={assignGymId} onValueChange={setAssignGymId}>
+                <SelectTrigger className="bg-zinc-800 border-zinc-700" data-testid="assign-gym-select">
+                  <SelectValue placeholder="Seleccionar gimnasio" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  {gyms.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-400 mb-2 block">Archivo de vencimientos (.json)</label>
+              <input
+                ref={assignFileRef}
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const f = e.target.files[0];
+                  setAssignFile(f);
+                  if (f) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      try {
+                        const data = JSON.parse(ev.target.result);
+                        setAssignPreview(data);
+                        const total = Object.keys(data).length;
+                        const conFecha = Object.values(data).filter(v => v.fecha_hasta).length;
+                        toast.info(`${total} socios encontrados, ${conFecha} con fecha de vencimiento`);
+                      } catch { setAssignPreview(null); toast.error('JSON invalido'); }
+                    };
+                    reader.readAsText(f);
+                  }
+                }}
+                className="hidden"
+                data-testid="assign-file-input"
+              />
+              <div
+                onClick={() => assignFileRef.current?.click()}
+                className="border-2 border-dashed border-zinc-700 rounded-xl p-6 text-center cursor-pointer hover:border-zinc-500 transition-colors"
+              >
+                {assignFile ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <FileSpreadsheet size={24} className="text-amber-400" />
+                    <div className="text-left">
+                      <p className="font-medium">{assignFile.name}</p>
+                      <p className="text-xs text-zinc-500">
+                        {assignPreview ? `${Object.keys(assignPreview).length} socios, ${Object.values(assignPreview).filter(v => v.fecha_hasta).length} con vencimiento` : ''}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Upload size={32} className="mx-auto text-zinc-600 mb-2" />
+                    <p className="text-zinc-400 text-sm">Sube el archivo vencimientos_lafabrika.json</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <p className="text-xs text-zinc-400">
+                Asigna membresias a los socios importados usando sus <span className="text-zinc-300">fechas de vencimiento reales</span> y <span className="text-zinc-300">cuota</span> para asociar el plan correcto. Los socios sin cuota activa se omiten.
+              </p>
+            </div>
+
+            {assignResult && (
+              <div className={`p-4 rounded-lg border ${assignResult.success ? 'bg-emerald-900/20 border-emerald-700' : 'bg-red-900/20 border-red-700'}`}>
+                <p className="font-medium text-sm">{assignResult.message}</p>
+                {assignResult.assigned > 0 && (
+                  <div className="mt-2 text-xs space-y-1 text-zinc-300">
+                    <p>Membresias creadas: <span className="text-emerald-400 font-bold">{assignResult.assigned}</span></p>
+                    <p>Omitidos: <span className="text-yellow-400">{assignResult.skipped}</span></p>
+                    {assignResult.no_plan > 0 && <p>Sin plan: <span className="text-red-400">{assignResult.no_plan}</span></p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button
+              onClick={handleAssignBulk}
+              disabled={assigning || !assignPreview || !assignGymId}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+              data-testid="assign-submit-btn"
+            >
+              {assigning ? (
+                <><Loader2 size={16} className="mr-2 animate-spin" /> Asignando...</>
+              ) : (
+                <><FileSpreadsheet size={16} className="mr-2" /> Asignar Membresias</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Membership Expiration Modal */}
+      <Dialog open={showEditExpirationModal} onOpenChange={setShowEditExpirationModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modificar Vencimiento</DialogTitle>
+          </DialogHeader>
+          {membershipMember && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                <p className="font-medium">{membershipMember.name}</p>
+                <p className="text-xs text-zinc-400">
+                  Plan: {membershipMember.membership?.plan_name || 'Sin plan'}
+                  {membershipMember.membership?.end_date && (
+                    <> · Vence: {new Date(membershipMember.membership.end_date).toLocaleDateString('es-ES')}</>
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm text-zinc-400 mb-1 block">Nueva fecha de vencimiento</label>
+                <Input
+                  type="date"
+                  value={membershipDate}
+                  onChange={(e) => setMembershipDate(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700"
+                  data-testid="membership-date-input"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-zinc-400 mb-1 block">Comentario (opcional)</label>
+                <Textarea
+                  value={membershipComment}
+                  onChange={(e) => setMembershipComment(e.target.value)}
+                  placeholder="Razon del cambio..."
+                  className="bg-zinc-800 border-zinc-700 min-h-[60px]"
+                  data-testid="membership-comment-input"
+                />
+              </div>
+
+              <Button
+                onClick={handleUpdateMembership}
+                disabled={savingMembership || !membershipDate}
+                className="w-full btn-gym-primary"
+                data-testid="membership-save-btn"
+              >
+                {savingMembership ? (
+                  <><Loader2 size={16} className="mr-2 animate-spin" /> Guardando...</>
+                ) : (
+                  'Guardar Cambio'
+                )}
+              </Button>
+
+              {membershipLogs.length > 0 && (
+                <div data-testid="membership-logs-section">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Historial de cambios</p>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {membershipLogs.map((log) => (
+                      <div key={log.id} className="p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-zinc-300 font-medium">{log.changed_by}</span>
+                          <span className="text-zinc-500">{new Date(log.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-zinc-400">
+                          <span>{log.previous_end_date ? new Date(log.previous_end_date).toLocaleDateString('es-ES') : '-'}</span>
+                          <span className="text-zinc-600">&rarr;</span>
+                          <span className="text-emerald-400 font-medium">{new Date(log.new_end_date).toLocaleDateString('es-ES')}</span>
+                        </div>
+                        {log.comment && (
+                          <p className="mt-1 text-zinc-400 italic">"{log.comment}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

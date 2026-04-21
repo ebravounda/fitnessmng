@@ -66,9 +66,9 @@ export const PWALayout = ({ children }) => {
           <div className="flex items-center gap-3 min-w-0">
             {gym?.logo_url ? (
               <img 
-                src={gym.logo_url} 
+                src={gym.logo_url.startsWith('/') ? `${process.env.REACT_APP_BACKEND_URL}${gym.logo_url}` : gym.logo_url} 
                 alt={gym.name} 
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-cover shrink-0"
+                className="h-9 sm:h-10 max-w-[120px] object-contain shrink-0"
               />
             ) : (
               <div 

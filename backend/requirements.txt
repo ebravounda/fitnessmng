@@ -81,6 +81,7 @@ pyasn1==0.6.3
 pyasn1_modules==0.4.2
 pycodestyle==2.14.0
 pycparser==3.0
+pycryptodome==3.23.0
 pydantic==2.12.5
 pydantic_core==2.41.5
 pyflakes==3.4.0
@@ -95,6 +96,7 @@ python-jose==3.5.0
 python-multipart==0.0.24
 pytokens==0.4.1
 PyYAML==6.0.3
+redsys==0.3.1
 referencing==0.37.0
 regex==2026.4.4
 reportlab==4.4.10

@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/button';
 import { Calendar } from '../../components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Search, Calendar as CalendarIcon, Download, ArrowUpRight, ArrowDownLeft, BarChart3, User, FileSpreadsheet } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, Download, ArrowUpRight, ArrowDownLeft, BarChart3, User, FileSpreadsheet, Video } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -24,6 +24,8 @@ export default function AdminAccess() {
   const [memberStats, setMemberStats] = useState(null);
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -90,7 +92,8 @@ export default function AdminAccess() {
       'Código': log.member_code || log.guest_code || '-',
       'Dirección': log.direction === 'entrada' ? 'Entrada' : 'Salida',
       'Tipo': log.is_guest ? 'Invitado' : 'Socio',
-      'Válido': log.valid ? 'Sí' : 'No'
+      'Válido': log.valid ? 'Sí' : 'No',
+      'Video': log.video_id ? 'Sí' : 'No'
     }));
     
     const ws = XLSX.utils.json_to_sheet(data);
@@ -103,6 +106,13 @@ export default function AdminAccess() {
     XLSX.utils.book_append_sheet(wb, ws, 'Accesos');
     XLSX.writeFile(wb, `accesos_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
     toast.success('Archivo Excel descargado');
+  };
+
+  const playVideo = (videoId) => {
+    const API = process.env.REACT_APP_BACKEND_URL;
+    const token = localStorage.getItem('admin_token');
+    setVideoUrl(`${API}/api/access/video/${videoId}?token=${token}`);
+    setShowVideoModal(true);
   };
 
   return (
@@ -253,18 +263,32 @@ export default function AdminAccess() {
                       </span>
                     </td>
                     <td>
-                      {log.member_id && !log.is_guest && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => viewMemberStats(log.member_id)}
-                          className="h-8 px-2 text-zinc-400 hover:text-white"
-                          data-testid={`view-stats-${log.member_id}`}
-                        >
-                          <BarChart3 size={16} className="mr-1" />
-                          <span className="text-xs">Asistencia</span>
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {log.video_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => playVideo(log.video_id)}
+                            className="h-8 px-2 text-orange-400 hover:text-orange-300"
+                            data-testid={`view-video-${log.id}`}
+                          >
+                            <Video size={16} className="mr-1" />
+                            <span className="text-xs">Video</span>
+                          </Button>
+                        )}
+                        {log.member_id && !log.is_guest && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewMemberStats(log.member_id)}
+                            className="h-8 px-2 text-zinc-400 hover:text-white"
+                            data-testid={`view-stats-${log.member_id}`}
+                          >
+                            <BarChart3 size={16} className="mr-1" />
+                            <span className="text-xs">Stats</span>
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -379,6 +403,27 @@ export default function AdminAccess() {
             </div>
           ) : (
             <p className="text-center text-zinc-500 py-8">No hay datos disponibles</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Player Modal */}
+      <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Grabación de Acceso</DialogTitle>
+          </DialogHeader>
+          {videoUrl && (
+            <div className="rounded-xl overflow-hidden bg-black">
+              <video 
+                src={videoUrl} 
+                controls 
+                autoPlay 
+                className="w-full"
+                style={{ maxHeight: '400px' }}
+                data-testid="access-video-player"
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>

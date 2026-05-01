@@ -389,3 +389,13 @@ export const uploadProductImage = (productId, file) => {
   fd.append('file', file);
   return axios.post(`${API}/upload/product-image/${productId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
 };
+
+// Access Videos
+export const getAccessVideos = (memberId, gymId, limit = 50) => {
+  const params = {};
+  if (memberId) params.member_id = memberId;
+  if (gymId) params.gym_id = gymId;
+  if (limit) params.limit = limit;
+  return axios.get(`${API}/access/videos`, { params });
+};
+

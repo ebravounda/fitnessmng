@@ -231,7 +231,7 @@ async def validate_access(validation: AccessValidation):
         "direction": actual_direction, "timestamp": datetime.now(timezone.utc).isoformat()
     }
     await db.access_logs.insert_one(access_log)
-    return {"valid": True, "member_name": member["name"], "member_code": member["code"], "direction": actual_direction}
+    return {"valid": True, "member_name": member["name"], "member_code": member["code"], "direction": actual_direction, "access_log_id": access_log["id"]}
 
 @router.get("/access/logs")
 async def get_access_logs(

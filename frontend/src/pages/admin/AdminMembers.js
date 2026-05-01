@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
-import { getMembers, createMember, updateMember, approveMember, suspendMember, deleteMember, getPlans, createMembership, checkExpiredMemberships, getGyms, setMemberQRMode, uploadAvatarAdmin, getMemberDevices, deactivateDevice, deactivateAllDevices, getMemberEmails, resendEmail, cleanupInactiveMembers, assignRFID, importMembers, assignMembershipsBulk, updateMemberMembership, getMembershipLogs } from '../../lib/api';
+import { getMembers, createMember, updateMember, approveMember, suspendMember, deleteMember, getPlans, createMembership, checkExpiredMemberships, getGyms, setMemberQRMode, uploadAvatarAdmin, getMemberDevices, deactivateDevice, deactivateAllDevices, getMemberEmails, resendEmail, cleanupInactiveMembers, assignRFID, importMembers, assignMembershipsBulk, updateMemberMembership, getMembershipLogs, getAccessVideos } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -12,7 +12,7 @@ import {
   Search, Plus, MoreVertical, Check,
   UserPlus, CreditCard, Pencil, Trash2, Ban, CheckCircle,
   AlertTriangle, RefreshCw, PauseCircle, Banknote, Receipt, QrCode, Camera,
-  Mail, Phone, Copy, X as XIcon, Smartphone, Building2, Loader2, Send, Upload, FileSpreadsheet
+  Mail, Phone, Copy, X as XIcon, Smartphone, Building2, Loader2, Send, Upload, FileSpreadsheet, Video
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../../components/ui/dropdown-menu';
@@ -127,8 +127,23 @@ export default function AdminMembers() {
   const [membershipComment, setMembershipComment] = useState('');
   const [savingMembership, setSavingMembership] = useState(false);
   const [membershipLogs, setMembershipLogs] = useState([]);
+  const [showVideosModal, setShowVideosModal] = useState(false);
+  const [memberVideos, setMemberVideos] = useState([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [playingVideoUrl, setPlayingVideoUrl] = useState(null);
 
   useEffect(() => { fetchMembers(); fetchPlans(); if (isSuperAdmin) fetchGyms(); }, [statusFilter]);
+
+  useEffect(() => {
+    if (showVideosModal && selectedMember) {
+      setLoadingVideos(true);
+      setPlayingVideoUrl(null);
+      getAccessVideos(selectedMember.id)
+        .then(res => setMemberVideos(res.data))
+        .catch(() => toast.error('Error al cargar videos'))
+        .finally(() => setLoadingVideos(false));
+    }
+  }, [showVideosModal, selectedMember]);
 
   const fetchGyms = async () => {
     try { const res = await getGyms(); setGyms(res.data); if (res.data.length > 0 && !newMember.gym_id) setNewMember(prev => ({ ...prev, gym_id: res.data[0].id })); }
@@ -683,6 +698,9 @@ export default function AdminMembers() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleOpenDevices(member)} className="cursor-pointer text-zinc-400" data-testid={`member-devices-${member.code}`}>
                           <Smartphone size={16} className="mr-2" /> Dispositivos
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setSelectedMember(member); setShowVideosModal(true); }} className="cursor-pointer text-orange-400" data-testid={`member-videos-${member.code}`}>
+                          <Video size={16} className="mr-2" /> Videos de Acceso
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleOpenEmails(member)} className="cursor-pointer text-blue-400" data-testid={`member-emails-${member.code}`}>
                           <Mail size={16} className="mr-2" /> Emails
@@ -1276,6 +1294,59 @@ export default function AdminMembers() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Videos Modal */}
+      <Dialog open={showVideosModal} onOpenChange={setShowVideosModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video size={20} style={{ color: '#FF6600' }} />
+              Videos de Acceso — {selectedMember?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingVideos ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="animate-spin text-zinc-500" size={32} />
+            </div>
+          ) : memberVideos.length === 0 ? (
+            <div className="text-center py-12 text-zinc-500">
+              <Video size={48} className="mx-auto mb-4 opacity-30" />
+              <p>No hay grabaciones de acceso para este socio</p>
+              <p className="text-xs mt-2 text-zinc-600">Los videos se graban automaticamente al escanear el QR en el torno</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {playingVideoUrl && (
+                <div className="rounded-xl overflow-hidden bg-black mb-4">
+                  <video src={playingVideoUrl} controls autoPlay className="w-full" style={{ maxHeight: '300px' }} data-testid="member-video-player" />
+                </div>
+              )}
+              {memberVideos.map((log) => (
+                <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+                  <div>
+                    <p className="font-medium text-sm">{new Date(log.timestamp).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                    <p className="text-xs text-zinc-500">{new Date(log.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const API = process.env.REACT_APP_BACKEND_URL;
+                      const token = localStorage.getItem('admin_token');
+                      setPlayingVideoUrl(`${API}/api/access/video/${log.video_id}?token=${token}`);
+                    }}
+                    className="text-orange-400 hover:text-orange-300"
+                    data-testid={`play-video-${log.id}`}
+                  >
+                    <Video size={16} className="mr-1" /> Ver
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

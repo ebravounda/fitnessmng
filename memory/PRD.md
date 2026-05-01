@@ -63,3 +63,13 @@ docker restart gym24-api
 - Tipo negocio "Piscina" añadido, "Coworking" eliminado
 - "Despliegue Backend" eliminado de Settings
 - Monitor RPi simplificado (IP pública, IP local, estado)
+
+### Sesión 3 (Abr 2026)
+- Módulo de video en accesos implementado
+- Backend: upload/stream/list/cleanup endpoints para videos de 4s
+- Cron automático: borra videos >30 días a medianoche
+- Frontend: botón "Video" en historial accesos + modal reproductor
+- Frontend: opción "Videos de Acceso" en menú de cada socio
+- Script Raspberry Pi actualizado con grabación ffmpeg en entradas
+- Solo graba en ENTRADAS, no salidas
+- Storage: /opt/gym24/videos en Plesk (~7.5GB max con 500 socios)

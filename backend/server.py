@@ -33,6 +33,7 @@ from routes.stripe_auto_routes import router as stripe_auto_router
 from routes.demo_routes import router as demo_router
 from routes.whmcs_routes import router as whmcs_router
 from routes.redsys_routes import router as redsys_router
+from routes.video_routes import router as video_router
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ app.include_router(stripe_auto_router)
 app.include_router(demo_router)
 app.include_router(whmcs_router)
 app.include_router(redsys_router)
+app.include_router(video_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -210,10 +212,34 @@ async def do_send_expiration_reminders():
     if total_sent > 0:
         logger.info(f"[CRON] Sent {total_sent} expiration reminder emails")
 
+async def do_cleanup_old_videos():
+    """Delete video recordings older than 30 days."""
+    from pathlib import Path
+    import os
+    VIDEO_DIR = Path("/opt/gym24/videos")
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    old_logs = await db.access_logs.find(
+        {"video_id": {"$exists": True}, "timestamp": {"$lt": cutoff}},
+        {"_id": 0, "video_id": 1, "video_filename": 1}
+    ).to_list(10000)
+    deleted_count = 0
+    for log in old_logs:
+        filepath = VIDEO_DIR / log.get("video_filename", "")
+        if filepath.exists():
+            os.remove(filepath)
+            deleted_count += 1
+    await db.access_logs.update_many(
+        {"video_id": {"$exists": True}, "timestamp": {"$lt": cutoff}},
+        {"$unset": {"video_id": "", "video_filename": ""}}
+    )
+    if deleted_count > 0:
+        logger.info(f"[CRON] Deleted {deleted_count} videos older than 30 days")
+
 @app.on_event("startup")
 async def start_background_tasks():
     asyncio.create_task(run_daily_at_midnight(do_auto_suspend))
     asyncio.create_task(run_daily_at_midnight(do_send_expiration_reminders))
+    asyncio.create_task(run_daily_at_midnight(do_cleanup_old_videos))
     # Also run auto-suspend once on startup to catch any already expired
     asyncio.create_task(do_auto_suspend())
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
+import AssistantChat from '../components/AssistantChat';
 import { 
   LayoutDashboard, Users, CreditCard, Building2, UserCog, Settings, 
   Calendar, Clock, Bell, Shield, QrCode, Menu, X, ChevronLeft,
@@ -53,7 +54,7 @@ const getNavItems = (role, isImpersonating, permissions, labels) => {
 };
 
 export const AdminLayout = ({ children }) => {
-  const { admin, logout, isImpersonating, exitImpersonation } = useAuth();
+  const { admin, logout, isImpersonating, exitImpersonation, isSuperAdmin } = useAuth();
   const { labels } = useBusiness();
   const location = useLocation();
   const navigate = useNavigate();
@@ -288,6 +289,9 @@ export const AdminLayout = ({ children }) => {
           {children}
         </div>
       </main>
+
+      {/* AI Assistant - Solo Super Admin */}
+      {isSuperAdmin && <AssistantChat />}
     </div>
   );
 };

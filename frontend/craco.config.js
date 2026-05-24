@@ -1,6 +1,10 @@
 // craco.config.js
 const path = require("path");
-require("dotenv").config();
+// Load env-specific file first (.env.production for production builds) so it takes precedence
+const envFile = process.env.NODE_ENV === "production" ? ".env.production" : ".env";
+require("dotenv").config({ path: path.resolve(__dirname, envFile) });
+// Then fall back to .env for any vars not defined in the env-specific file
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build

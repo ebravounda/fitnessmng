@@ -108,6 +108,16 @@ echo ""
 
 # 5. Actualizar frontend
 echo "[5/5] Sincronizando frontend..."
+
+# Rebuild siempre el frontend en el servidor con la URL de produccion
+# para evitar que se cuele la URL del preview de Emergent
+if command -v yarn >/dev/null 2>&1 && [ -f "$REPO_DIR/frontend/package.json" ]; then
+    echo "Reconstruyendo frontend con URL produccion..."
+    cd "$REPO_DIR/frontend"
+    yarn install --frozen-lockfile 2>&1 | tail -5
+    REACT_APP_BACKEND_URL="https://$API_DOMAIN" yarn build 2>&1 | tail -3
+fi
+
 if [ -d "$REPO_DIR/frontend/build" ]; then
     # Preservar .htaccess si existe
     if [ -f "$FRONTEND_HTTPDOCS/.htaccess" ]; then

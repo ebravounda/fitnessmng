@@ -73,3 +73,11 @@ docker restart gym24-api
 - Script Raspberry Pi actualizado con grabación ffmpeg en entradas
 - Solo graba en ENTRADAS, no salidas
 - Storage: /opt/gym24/videos en Plesk (~7.5GB max con 500 socios)
+
+### Sesión 5 (May 2026)
+- Mapa corporal SVG interactivo (frontal + posterior) con 15 zonas musculares
+- ~50 ejercicios en español con máquinas, series, reps, descripción
+- Vista frontal: pecho, hombros, bíceps, antebrazos, abdomen, cuádriceps, tibiales
+- Vista posterior: trapecios, dorsales, espalda media, tríceps, lumbares, glúteos, isquiotibiales, gemelos
+- Cards expandibles con animaciones framer-motion
+- Botones rápidos de zona debajo del mapa corporal

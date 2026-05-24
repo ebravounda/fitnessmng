@@ -16,7 +16,7 @@ CLASSES_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============ ONLINE CLASSES ============
 
-@router.post("/classes/online")
+@router.post("/online-classes")
 async def create_online_class(
     title: str = Form(...),
     description: str = Form(""),
@@ -59,7 +59,7 @@ async def create_online_class(
     doc.pop("_id", None)
     return doc
 
-@router.get("/classes/online")
+@router.get("/online-classes")
 async def list_online_classes(gym_id: Optional[str] = None, member_id: Optional[str] = None):
     query = {"active": True}
     if gym_id:
@@ -72,7 +72,7 @@ async def list_online_classes(gym_id: Optional[str] = None, member_id: Optional[
     
     return classes
 
-@router.get("/classes/online/{class_id}/video")
+@router.get("/online-classes/{class_id}/video")
 async def stream_online_class(class_id: str):
     doc = await db.online_classes.find_one({"id": class_id}, {"_id": 0})
     if not doc:
@@ -82,7 +82,7 @@ async def stream_online_class(class_id: str):
         raise HTTPException(status_code=404, detail="Video no encontrado")
     return FileResponse(filepath, media_type="video/mp4")
 
-@router.delete("/classes/online/{class_id}")
+@router.delete("/online-classes/{class_id}")
 async def delete_online_class(class_id: str, admin: dict = Depends(get_current_admin)):
     doc = await db.online_classes.find_one({"id": class_id}, {"_id": 0})
     if not doc:
@@ -92,6 +92,50 @@ async def delete_online_class(class_id: str, admin: dict = Depends(get_current_a
         os.remove(filepath)
     await db.online_classes.delete_one({"id": class_id})
     return {"success": True}
+
+@router.post("/online-classes/youtube")
+async def create_youtube_class(body: dict, admin: dict = Depends(get_current_admin)):
+    """Create an online class from a YouTube link."""
+    gym_id = admin.get("gym_id")
+    if not gym_id and admin["role"] != "super_admin":
+        raise HTTPException(status_code=403, detail="No gym assigned")
+    
+    youtube_url = body.get("youtube_url", "")
+    if not youtube_url:
+        raise HTTPException(status_code=400, detail="URL de YouTube requerida")
+    
+    # Extract YouTube video ID
+    video_yt_id = ""
+    if "youtu.be/" in youtube_url:
+        video_yt_id = youtube_url.split("youtu.be/")[-1].split("?")[0]
+    elif "v=" in youtube_url:
+        video_yt_id = youtube_url.split("v=")[-1].split("&")[0]
+    elif "embed/" in youtube_url:
+        video_yt_id = youtube_url.split("embed/")[-1].split("?")[0]
+    
+    assigned_to = body.get("assigned_to", "all")
+    member_ids = [] if assigned_to == "all" else [mid.strip() for mid in assigned_to.split(",") if mid.strip()]
+
+    doc = {
+        "id": str(uuid.uuid4()), "gym_id": gym_id,
+        "title": body.get("title", ""),
+        "description": body.get("description", ""),
+        "category": body.get("category", "general"),
+        "duration_minutes": body.get("duration_minutes", 0),
+        "source": "youtube",
+        "youtube_url": youtube_url,
+        "youtube_id": video_yt_id,
+        "assigned_to": assigned_to,
+        "member_ids": member_ids,
+        "video_filename": "", "video_size": 0,
+        "created_by": admin.get("id"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "active": True
+    }
+    await db.online_classes.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
 
 # ============ CUSTOM EXERCISES ============
 

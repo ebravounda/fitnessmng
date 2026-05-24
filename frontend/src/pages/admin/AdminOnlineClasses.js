@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Video, Plus, Trash2, Loader2, Play, Clock, Upload, Search } from 'lucide-react';
+import { Video, Plus, Trash2, Loader2, Play, Clock, Upload, Search, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -40,6 +40,8 @@ export default function AdminOnlineClasses() {
   const [assignedTo, setAssignedTo] = useState('all');
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
+  const [sourceType, setSourceType] = useState('upload');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const fileRef = useRef(null);
 
   useEffect(() => { fetchClasses(); fetchMembers(); }, []);
@@ -58,35 +60,50 @@ export default function AdminOnlineClasses() {
   const fetchClasses = async () => {
     try {
       const gymId = admin?.gym_id || '';
-      const res = await axios.get(`${API}/classes/online${gymId ? `?gym_id=${gymId}` : ''}`);
+      const res = await axios.get(`${API}/online-classes${gymId ? `?gym_id=${gymId}` : ''}`);
       setClasses(res.data);
     } catch { toast.error('Error al cargar clases'); }
     finally { setLoading(false); }
   };
 
   const handleUpload = async () => {
-    if (!title || !videoFile) { toast.error('Titulo y video son obligatorios'); return; }
+    if (!title) { toast.error('El titulo es obligatorio'); return; }
+    if (sourceType === 'upload' && !videoFile) { toast.error('Selecciona un video'); return; }
+    if (sourceType === 'youtube' && !youtubeUrl) { toast.error('Pega el enlace de YouTube'); return; }
+    
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('title', title);
-      fd.append('description', description);
-      fd.append('category', category);
-      fd.append('duration_minutes', duration || '0');
-      fd.append('assigned_to', assignedTo === 'all' ? 'all' : selectedMembers.join(','));
-      fd.append('video', videoFile);
-      await axios.post(`${API}/classes/online`, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000 });
-      toast.success('Clase subida correctamente');
+      const assignedValue = assignedTo === 'all' ? 'all' : selectedMembers.join(',');
+      
+      if (sourceType === 'youtube') {
+        await axios.post(`${API}/online-classes/youtube`, {
+          title, description, category,
+          duration_minutes: parseInt(duration) || 0,
+          youtube_url: youtubeUrl,
+          assigned_to: assignedValue
+        });
+      } else {
+        const fd = new FormData();
+        fd.append('title', title);
+        fd.append('description', description);
+        fd.append('category', category);
+        fd.append('duration_minutes', duration || '0');
+        fd.append('assigned_to', assignedValue);
+        fd.append('video', videoFile);
+        await axios.post(`${API}/online-classes`, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000 });
+      }
+      
+      toast.success('Clase creada correctamente');
       setShowCreate(false);
-      setTitle(''); setDescription(''); setCategory('general'); setDuration(''); setVideoFile(null); setAssignedTo('all'); setSelectedMembers([]);
+      setTitle(''); setDescription(''); setCategory('general'); setDuration(''); setVideoFile(null); setAssignedTo('all'); setSelectedMembers([]); setYoutubeUrl(''); setSourceType('upload');
       fetchClasses();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Error al subir'); }
+    } catch (err) { toast.error(err.response?.data?.detail || 'Error al crear'); }
     finally { setUploading(false); }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Eliminar esta clase?')) return;
-    try { await axios.delete(`${API}/classes/online/${id}`); toast.success('Eliminada'); fetchClasses(); }
+    try { await axios.delete(`${API}/online-classes/${id}`); toast.success('Eliminada'); fetchClasses(); }
     catch { toast.error('Error'); }
   };
 
@@ -121,12 +138,26 @@ export default function AdminOnlineClasses() {
             <div key={cls.id} className="stat-card overflow-hidden" data-testid={`class-card-${cls.id}`}>
               {/* Video player or thumbnail */}
               {playingId === cls.id ? (
-                <video src={`${API}/classes/online/${cls.id}/video`} controls autoPlay className="w-full rounded-xl mb-3" style={{ maxHeight: '200px' }} />
-              ) : (
-                <div className="w-full h-32 rounded-xl mb-3 flex items-center justify-center cursor-pointer bg-zinc-800 hover:bg-zinc-700 transition-colors" onClick={() => setPlayingId(cls.id)}>
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.15)' }}>
-                    <Play size={28} style={{ color: '#FF6600' }} />
+                cls.source === 'youtube' && cls.youtube_id ? (
+                  <div className="w-full rounded-xl mb-3 overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                    <iframe src={`https://www.youtube.com/embed/${cls.youtube_id}?autoplay=1`} title={cls.title} className="w-full h-full" frameBorder="0" allow="autoplay; encrypted-media" allowFullScreen />
                   </div>
+                ) : (
+                  <video src={`${API}/online-classes/${cls.id}/video`} controls autoPlay className="w-full rounded-xl mb-3" style={{ maxHeight: '200px' }} />
+                )
+              ) : (
+                <div className="w-full h-32 rounded-xl mb-3 flex items-center justify-center cursor-pointer bg-zinc-800 hover:bg-zinc-700 transition-colors relative" onClick={() => setPlayingId(cls.id)}>
+                  {cls.source === 'youtube' && cls.youtube_id ? (
+                    <img src={`https://img.youtube.com/vi/${cls.youtube_id}/mqdefault.jpg`} alt={cls.title} className="w-full h-full object-cover rounded-xl" />
+                  ) : null}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.8)' }}>
+                      <Play size={28} color="white" />
+                    </div>
+                  </div>
+                  {cls.source === 'youtube' && (
+                    <span className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md bg-red-600 text-white font-bold">YouTube</span>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
@@ -223,7 +254,34 @@ export default function AdminOnlineClasses() {
               )}
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Video *</label>
+              <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--text-secondary)' }}>Fuente del Video</label>
+              <div className="flex gap-2">
+                <button onClick={() => setSourceType('upload')} className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                  style={sourceType === 'upload' ? { background: 'linear-gradient(135deg, #FF6600, #E65C00)', color: '#FFF' } : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }}
+                  data-testid="source-upload-btn">
+                  <Upload size={16} /> Subir Video
+                </button>
+                <button onClick={() => setSourceType('youtube')} className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                  style={sourceType === 'youtube' ? { background: '#FF0000', color: '#FFF' } : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }}
+                  data-testid="source-youtube-btn">
+                  <Link2 size={16} /> YouTube
+                </button>
+              </div>
+            </div>
+            {sourceType === 'youtube' ? (
+              <div>
+                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Enlace de YouTube *</label>
+                <Input value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="input-dark" data-testid="youtube-url-input" />
+                {youtubeUrl && (() => {
+                  let ytId = '';
+                  if (youtubeUrl.includes('youtu.be/')) ytId = youtubeUrl.split('youtu.be/')[1]?.split('?')[0];
+                  else if (youtubeUrl.includes('v=')) ytId = youtubeUrl.split('v=')[1]?.split('&')[0];
+                  return ytId ? <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt="Preview" className="mt-2 rounded-xl w-full" /> : null;
+                })()}
+              </div>
+            ) : (
+              <div>
+                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Video *</label>
               <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-zinc-700 hover:border-orange-500/50 rounded-xl p-6 text-center cursor-pointer transition-colors" data-testid="class-video-upload">
                 {videoFile ? (
                   <div>
@@ -240,9 +298,10 @@ export default function AdminOnlineClasses() {
                 )}
               </div>
               <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files[0])} />
-            </div>
-            <Button onClick={handleUpload} disabled={uploading || !title || !videoFile} className="w-full btn-gym-primary" data-testid="upload-class-btn">
-              {uploading ? <><Loader2 size={16} className="animate-spin mr-2" /> Subiendo...</> : <><Upload size={16} className="mr-2" /> Subir Clase</>}
+              </div>
+            )}
+            <Button onClick={handleUpload} disabled={uploading || !title || (sourceType === 'upload' && !videoFile) || (sourceType === 'youtube' && !youtubeUrl)} className="w-full btn-gym-primary" data-testid="upload-class-btn">
+              {uploading ? <><Loader2 size={16} className="animate-spin mr-2" /> {sourceType === 'youtube' ? 'Creando...' : 'Subiendo...'}</> : <><Upload size={16} className="mr-2" /> {sourceType === 'youtube' ? 'Crear Clase' : 'Subir Clase'}</>}
             </Button>
           </div>
         </DialogContent>

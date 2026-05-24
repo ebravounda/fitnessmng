@@ -28,7 +28,7 @@ export default function MemberOnlineClasses() {
     const params = new URLSearchParams();
     if (gymId) params.set('gym_id', gymId);
     if (memberId) params.set('member_id', memberId);
-    axios.get(`${API}/classes/online?${params.toString()}`)
+    axios.get(`${API}/online-classes?${params.toString()}`)
       .then(res => setClasses(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -90,12 +90,26 @@ export default function MemberOnlineClasses() {
               data-testid={`class-${cls.id}`}
             >
               {playingId === cls.id ? (
-                <video src={`${API}/classes/online/${cls.id}/video`} controls autoPlay className="w-full" style={{ maxHeight: '250px' }} data-testid="class-video-player" />
-              ) : (
-                <div className="w-full h-40 flex items-center justify-center cursor-pointer relative" style={{ background: 'linear-gradient(135deg, #0a0a0a, #141414)' }} onClick={() => setPlayingId(cls.id)}>
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ background: 'rgba(255,102,0,0.15)', border: '2px solid rgba(255,102,0,0.3)' }}>
-                    <Play size={30} style={{ color: '#FF6600', marginLeft: '3px' }} />
+                cls.source === 'youtube' && cls.youtube_id ? (
+                  <div className="w-full rounded-t-2xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                    <iframe src={`https://www.youtube.com/embed/${cls.youtube_id}?autoplay=1`} title={cls.title} className="w-full h-full" frameBorder="0" allow="autoplay; encrypted-media; fullscreen" allowFullScreen />
                   </div>
+                ) : (
+                  <video src={`${API}/online-classes/${cls.id}/video`} controls autoPlay className="w-full" style={{ maxHeight: '250px' }} data-testid="class-video-player" />
+                )
+              ) : (
+                <div className="w-full h-40 flex items-center justify-center cursor-pointer relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0a0a, #141414)' }} onClick={() => setPlayingId(cls.id)}>
+                  {cls.source === 'youtube' && cls.youtube_id ? (
+                    <img src={`https://img.youtube.com/vi/${cls.youtube_id}/mqdefault.jpg`} alt={cls.title} className="w-full h-full object-cover opacity-70" />
+                  ) : null}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ background: cls.source === 'youtube' ? 'rgba(255,0,0,0.8)' : 'rgba(255,102,0,0.8)' }}>
+                      <Play size={30} color="white" style={{ marginLeft: '3px' }} />
+                    </div>
+                  </div>
+                  {cls.source === 'youtube' && (
+                    <span className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-md bg-red-600 text-white font-bold">YouTube</span>
+                  )}
                   <span className="absolute bottom-2 right-3 text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.7)', color: 'var(--text-muted)' }}>
                     {cls.duration_minutes > 0 ? `${cls.duration_minutes} min` : 'Video'}
                   </span>

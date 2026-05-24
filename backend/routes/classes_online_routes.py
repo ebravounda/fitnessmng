@@ -22,6 +22,7 @@ async def create_online_class(
     description: str = Form(""),
     category: str = Form("general"),
     duration_minutes: int = Form(0),
+    assigned_to: str = Form("all"),
     video: UploadFile = File(...),
     admin: dict = Depends(get_current_admin)
 ):
@@ -41,10 +42,15 @@ async def create_online_class(
     with open(filepath, "wb") as f:
         f.write(content)
 
+    # assigned_to: "all" or comma-separated member IDs
+    member_ids = [] if assigned_to == "all" else [mid.strip() for mid in assigned_to.split(",") if mid.strip()]
+
     doc = {
         "id": video_id, "gym_id": gym_id, "title": title,
         "description": description, "category": category,
         "duration_minutes": duration_minutes,
+        "assigned_to": assigned_to,
+        "member_ids": member_ids,
         "video_filename": filename, "video_size": len(content),
         "created_by": admin.get("id"), "created_at": datetime.now(timezone.utc).isoformat(),
         "active": True
@@ -54,11 +60,16 @@ async def create_online_class(
     return doc
 
 @router.get("/classes/online")
-async def list_online_classes(gym_id: Optional[str] = None):
+async def list_online_classes(gym_id: Optional[str] = None, member_id: Optional[str] = None):
     query = {"active": True}
     if gym_id:
         query["gym_id"] = gym_id
     classes = await db.online_classes.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Filter by member if specified
+    if member_id:
+        classes = [c for c in classes if c.get("assigned_to") == "all" or member_id in c.get("member_ids", [])]
+    
     return classes
 
 @router.get("/classes/online/{class_id}/video")

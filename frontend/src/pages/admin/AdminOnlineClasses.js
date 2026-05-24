@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Video, Plus, Trash2, Loader2, Play, Clock, Upload } from 'lucide-react';
+import { Video, Plus, Trash2, Loader2, Play, Clock, Upload, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -27,6 +27,7 @@ const CATEGORIES = [
 export default function AdminOnlineClasses() {
   const { admin } = useAuth();
   const [classes, setClasses] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -36,7 +37,21 @@ export default function AdminOnlineClasses() {
   const [duration, setDuration] = useState('');
   const [videoFile, setVideoFile] = useState(null);
   const [playingId, setPlayingId] = useState(null);
+  const [assignedTo, setAssignedTo] = useState('all');
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const fileRef = useRef(null);
+
+  useEffect(() => { fetchClasses(); fetchMembers(); }, []);
+
+  const fetchMembers = async () => {
+    try {
+      const gymId = admin?.gym_id || '';
+      const res = await axios.get(`${API}/members${gymId ? `?gym_id=${gymId}` : ''}`);
+      const data = Array.isArray(res.data) ? res.data : res.data.members || [];
+      setMembers(data);
+    } catch {}
+  };
 
   useEffect(() => { fetchClasses(); }, []);
 
@@ -58,11 +73,12 @@ export default function AdminOnlineClasses() {
       fd.append('description', description);
       fd.append('category', category);
       fd.append('duration_minutes', duration || '0');
+      fd.append('assigned_to', assignedTo === 'all' ? 'all' : selectedMembers.join(','));
       fd.append('video', videoFile);
       await axios.post(`${API}/classes/online`, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000 });
       toast.success('Clase subida correctamente');
       setShowCreate(false);
-      setTitle(''); setDescription(''); setCategory('general'); setDuration(''); setVideoFile(null);
+      setTitle(''); setDescription(''); setCategory('general'); setDuration(''); setVideoFile(null); setAssignedTo('all'); setSelectedMembers([]);
       fetchClasses();
     } catch (err) { toast.error(err.response?.data?.detail || 'Error al subir'); }
     finally { setUploading(false); }
@@ -125,6 +141,9 @@ export default function AdminOnlineClasses() {
                     </span>
                   )}
                   <span className="text-xs" style={{ color: 'var(--text-dim)' }}>{formatSize(cls.video_size || 0)}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: cls.assigned_to === 'all' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', color: cls.assigned_to === 'all' ? '#10B981' : '#3B82F6', border: `1px solid ${cls.assigned_to === 'all' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)'}` }}>
+                    {cls.assigned_to === 'all' ? 'Todos' : `${(cls.member_ids || []).length} socios`}
+                  </span>
                 </div>
                 {cls.description && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{cls.description}</p>}
                 <div className="flex justify-between items-center pt-2">
@@ -166,6 +185,42 @@ export default function AdminOnlineClasses() {
             <div>
               <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Descripcion</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Descripcion de la clase..." className="w-full px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white resize-none h-20" data-testid="class-desc-input" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Asignar a</label>
+              <select value={assignedTo} onChange={e => { setAssignedTo(e.target.value); if (e.target.value === 'all') setSelectedMembers([]); }}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white" data-testid="class-assigned-select">
+                <option value="all">Todos los socios</option>
+                <option value="specific">Socios especificos</option>
+              </select>
+              
+              {assignedTo === 'specific' && (
+                <div className="mt-2 space-y-2">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                    <input value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Buscar socio..."
+                      className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-white" />
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-1 rounded-xl bg-zinc-800/50 p-2 border border-zinc-700/50">
+                    {members
+                      .filter(m => !memberSearch || m.name.toLowerCase().includes(memberSearch.toLowerCase()) || m.code.includes(memberSearch.toUpperCase()))
+                      .slice(0, 20)
+                      .map(m => (
+                        <label key={m.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-700/50 cursor-pointer">
+                          <input type="checkbox" checked={selectedMembers.includes(m.id)}
+                            onChange={e => setSelectedMembers(prev => e.target.checked ? [...prev, m.id] : prev.filter(id => id !== m.id))}
+                            className="rounded accent-orange-500" />
+                          <span className="text-sm">{m.name}</span>
+                          <span className="text-[10px] font-mono ml-auto" style={{ color: 'var(--text-dim)' }}>{m.code}</span>
+                        </label>
+                      ))
+                    }
+                  </div>
+                  {selectedMembers.length > 0 && (
+                    <p className="text-xs" style={{ color: '#FF6600' }}>{selectedMembers.length} socios seleccionados</p>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Video *</label>

@@ -4,179 +4,214 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { Dumbbell, Plus, Trash2, ChevronDown, ChevronUp, User, Save, X } from 'lucide-react';
+import { Dumbbell, Plus, Trash2, Pencil, Save, Image, Loader2, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const MUSCLE_GROUPS = [
+  { id: 'pecho', label: 'Pecho' },
+  { id: 'hombros', label: 'Hombros' },
+  { id: 'biceps', label: 'Biceps' },
+  { id: 'triceps', label: 'Triceps' },
+  { id: 'antebrazos', label: 'Antebrazos' },
+  { id: 'abdomen', label: 'Abdomen' },
+  { id: 'dorsales', label: 'Dorsales' },
+  { id: 'espalda_media', label: 'Espalda Media' },
+  { id: 'trapecios', label: 'Trapecios' },
+  { id: 'lumbares', label: 'Lumbares' },
+  { id: 'cuadriceps', label: 'Cuadriceps' },
+  { id: 'isquiotibiales', label: 'Isquiotibiales' },
+  { id: 'gluteos', label: 'Gluteos' },
+  { id: 'gemelos', label: 'Gemelos' },
+];
+
 export default function AdminRoutines() {
   const { admin } = useAuth();
-  const [routines, setRoutines] = useState([]);
-  const [members, setMembers] = useState([]);
+  const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedGroup, setSelectedGroup] = useState('pecho');
   const [showCreate, setShowCreate] = useState(false);
-  const [expanded, setExpanded] = useState(null);
-  const [form, setForm] = useState({ name: '', description: '', member_id: '', days: [] });
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: '', machine: '', series: 3, reps: '12', description: '', muscle_group: 'pecho', image_url: '' });
 
-  const fetchData = useCallback(async () => {
+  const fetchExercises = useCallback(async () => {
     try {
-      const [routRes, memRes] = await Promise.all([
-        axios.get(`${API}/routines`),
-        axios.get(`${API}/members?gym_id=${admin?.gym_id || ''}`)
-      ]);
-      setRoutines(routRes.data);
-      setMembers(Array.isArray(memRes.data) ? memRes.data : memRes.data.members || []);
-    } catch { toast.error('Error al cargar datos'); }
+      const gymId = admin?.gym_id || '';
+      const res = await axios.get(`${API}/exercises/custom${gymId ? `?gym_id=${gymId}` : ''}`);
+      setExercises(res.data);
+    } catch { toast.error('Error al cargar ejercicios'); }
     finally { setLoading(false); }
   }, [admin]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchExercises(); }, [fetchExercises]);
 
-  const addDay = () => {
-    setForm(f => ({ ...f, days: [...f.days, { name: `Dia ${f.days.length + 1}`, exercises: [{ name: '', sets: 3, reps: 12, rest: 60, notes: '' }] }] }));
-  };
+  const filteredExercises = exercises.filter(e => e.muscle_group === selectedGroup);
 
-  const addExercise = (dayIdx) => {
-    const days = [...form.days];
-    days[dayIdx].exercises.push({ name: '', sets: 3, reps: 12, rest: 60, notes: '' });
-    setForm(f => ({ ...f, days }));
-  };
-
-  const updateExercise = (dayIdx, exIdx, field, value) => {
-    const days = [...form.days];
-    days[dayIdx].exercises[exIdx][field] = value;
-    setForm(f => ({ ...f, days }));
-  };
-
-  const removeExercise = (dayIdx, exIdx) => {
-    const days = [...form.days];
-    days[dayIdx].exercises.splice(exIdx, 1);
-    setForm(f => ({ ...f, days }));
-  };
-
-  const removeDay = (dayIdx) => {
-    const days = [...form.days];
-    days.splice(dayIdx, 1);
-    setForm(f => ({ ...f, days }));
-  };
-
-  const handleCreate = async () => {
-    if (!form.name || !form.member_id) { toast.error('Nombre y socio son requeridos'); return; }
+  const handleSave = async () => {
+    if (!form.name) { toast.error('El nombre es obligatorio'); return; }
+    setSaving(true);
     try {
-      await axios.post(`${API}/routines`, { ...form, gym_id: admin?.gym_id });
-      toast.success('Rutina creada');
+      if (editingId) {
+        await axios.put(`${API}/exercises/custom/${editingId}`, form);
+        toast.success('Ejercicio actualizado');
+      } else {
+        await axios.post(`${API}/exercises/custom`, { ...form, muscle_group: selectedGroup });
+        toast.success('Ejercicio creado');
+      }
       setShowCreate(false);
-      setForm({ name: '', description: '', member_id: '', days: [] });
-      fetchData();
+      setEditingId(null);
+      setForm({ name: '', machine: '', series: 3, reps: '12', description: '', muscle_group: selectedGroup, image_url: '' });
+      fetchExercises();
     } catch (err) { toast.error(err.response?.data?.detail || 'Error'); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Eliminar esta rutina?')) return;
-    try {
-      await axios.delete(`${API}/routines/${id}`);
-      toast.success('Rutina eliminada');
-      fetchData();
-    } catch { toast.error('Error'); }
+    if (!window.confirm('Eliminar este ejercicio?')) return;
+    try { await axios.delete(`${API}/exercises/custom/${id}`); toast.success('Eliminado'); fetchExercises(); }
+    catch { toast.error('Error'); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-[var(--gym-primary)] border-t-transparent rounded-full animate-spin" /></div>;
+  const openEdit = (ex) => {
+    setForm({ name: ex.name, machine: ex.machine, series: ex.series, reps: ex.reps, description: ex.description, muscle_group: ex.muscle_group, image_url: ex.image_url || '' });
+    setEditingId(ex.id);
+    setShowCreate(true);
+  };
+
+  const openCreate = () => {
+    setForm({ name: '', machine: '', series: 3, reps: '12', description: '', muscle_group: selectedGroup, image_url: '' });
+    setEditingId(null);
+    setShowCreate(true);
+  };
 
   return (
-    <div className="space-y-6" data-testid="admin-routines-page">
+    <div className="space-y-6" data-testid="admin-routines">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Dumbbell size={24} style={{ color: 'var(--gym-primary)' }} /> Rutinas</h1>
-          <p className="text-zinc-400 text-sm">Asigna rutinas de entrenamiento a los socios</p>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: 'Outfit' }}>Gestionar Rutinas</h1>
+          <p style={{ color: 'var(--text-secondary)' }} className="text-sm">Personaliza los ejercicios por zona muscular</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="btn-gym-primary" data-testid="create-routine-btn">
-          <Plus size={16} className="mr-2" /> Nueva Rutina
+        <Button onClick={openCreate} className="btn-gym-primary" data-testid="add-exercise-btn">
+          <Plus size={18} className="mr-2" /> Nuevo Ejercicio
         </Button>
       </div>
 
-      {routines.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500">
-          <Dumbbell size={48} className="mx-auto mb-4" />
-          <p>No hay rutinas creadas</p>
+      {/* Muscle group tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+        {MUSCLE_GROUPS.map(g => (
+          <button key={g.id} onClick={() => setSelectedGroup(g.id)}
+            className="px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all shrink-0"
+            style={selectedGroup === g.id
+              ? { background: 'linear-gradient(135deg, #FF6600, #E65C00)', color: '#FFF' }
+              : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }}
+            data-testid={`group-tab-${g.id}`}
+          >
+            {g.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Exercise list */}
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-zinc-500" size={32} /></div>
+      ) : filteredExercises.length === 0 ? (
+        <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
+          <Dumbbell size={48} className="mx-auto mb-4 opacity-30" />
+          <p className="font-bold mb-1">Sin ejercicios personalizados para {MUSCLE_GROUPS.find(g => g.id === selectedGroup)?.label}</p>
+          <p className="text-xs mb-4">Los socios veran los ejercicios por defecto del sistema</p>
+          <Button onClick={openCreate} className="btn-gym-primary" data-testid="add-first-exercise">
+            <Plus size={16} className="mr-2" /> Crear Primer Ejercicio
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
-          {routines.map(r => {
-            const member = members.find(m => m.id === r.member_id);
-            return (
-              <div key={r.id} className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-800/30" onClick={() => setExpanded(expanded === r.id ? null : r.id)}>
-                  <div>
-                    <h3 className="font-bold text-zinc-200">{r.name}</h3>
-                    <div className="flex items-center gap-2 text-sm text-zinc-400">
-                      <User size={14} /> {member?.name || 'Socio'} - {r.days?.length || 0} dias - Por: {r.trainer_name}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
-                      <Trash2 size={14} />
-                    </Button>
-                    {expanded === r.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </div>
+          {filteredExercises.map(ex => (
+            <div key={ex.id} className="stat-card flex items-start gap-4" data-testid={`exercise-${ex.id}`}>
+              {/* Image */}
+              {ex.image_url ? (
+                <img src={ex.image_url} alt={ex.name} className="w-20 h-20 rounded-xl object-cover shrink-0" style={{ background: '#111' }} />
+              ) : (
+                <div className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,102,0,0.06)' }}>
+                  <Dumbbell size={24} style={{ color: '#FF6600' }} />
                 </div>
-                {expanded === r.id && r.days && (
-                  <div className="border-t border-zinc-800 p-4 space-y-3">
-                    {r.days.map((day, di) => (
-                      <div key={di} className="bg-zinc-800/50 rounded-lg p-3">
-                        <h4 className="font-medium text-sm mb-2" style={{ color: 'var(--gym-primary)' }}>{day.name}</h4>
-                        <div className="space-y-1">
-                          {day.exercises?.map((ex, ei) => (
-                            <div key={ei} className="flex items-center justify-between text-sm bg-zinc-900/50 rounded px-3 py-1.5">
-                              <span className="text-zinc-300">{ex.name || 'Ejercicio'}</span>
-                              <span className="text-zinc-500">{ex.sets}x{ex.reps} | {ex.rest}s rest</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              )}
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold" style={{ fontFamily: 'Outfit' }}>{ex.name}</h3>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-dim)' }}>{ex.machine}</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(255,102,0,0.08)', color: '#FF6600' }}>
+                    {ex.series}x{ex.reps}
+                  </span>
+                </div>
+                {ex.description && <p className="text-xs mt-2 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{ex.description}</p>}
               </div>
-            );
-          })}
+              {/* Actions */}
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => openEdit(ex)} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors" data-testid={`edit-${ex.id}`}>
+                  <Pencil size={16} style={{ color: 'var(--text-muted)' }} />
+                </button>
+                <button onClick={() => handleDelete(ex.id)} className="p-2 rounded-lg hover:bg-red-500/10 transition-colors" data-testid={`delete-${ex.id}`}>
+                  <Trash2 size={16} className="text-red-500" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Create Dialog */}
+      {/* Create/Edit Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
           <DialogHeader>
-            <DialogTitle>Nueva Rutina</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Dumbbell size={20} style={{ color: '#FF6600' }} />
+              {editingId ? 'Editar Ejercicio' : 'Nuevo Ejercicio'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Input placeholder="Nombre de la rutina" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="bg-zinc-800 border-zinc-700" data-testid="routine-name-input" />
-            <Input placeholder="Descripcion (opcional)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="bg-zinc-800 border-zinc-700" />
-            <select value={form.member_id} onChange={e => setForm({ ...form, member_id: e.target.value })} className="w-full bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg px-3 py-2" data-testid="routine-member-select">
-              <option value="">Seleccionar socio</option>
-              {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
-            </select>
-
-            {/* Days */}
-            {form.days.map((day, di) => (
-              <div key={di} className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <Input value={day.name} onChange={e => { const d = [...form.days]; d[di].name = e.target.value; setForm({ ...form, days: d }); }} className="bg-zinc-900 border-zinc-600 font-medium w-40" />
-                  <Button onClick={() => removeDay(di)} variant="ghost" size="sm" className="text-red-400"><X size={14} /></Button>
-                </div>
-                {day.exercises.map((ex, ei) => (
-                  <div key={ei} className="flex gap-2 items-center">
-                    <Input placeholder="Ejercicio" value={ex.name} onChange={e => updateExercise(di, ei, 'name', e.target.value)} className="bg-zinc-900 border-zinc-600 flex-1" />
-                    <Input type="number" value={ex.sets} onChange={e => updateExercise(di, ei, 'sets', parseInt(e.target.value) || 0)} className="bg-zinc-900 border-zinc-600 w-16 text-center" placeholder="Sets" />
-                    <Input type="number" value={ex.reps} onChange={e => updateExercise(di, ei, 'reps', parseInt(e.target.value) || 0)} className="bg-zinc-900 border-zinc-600 w-16 text-center" placeholder="Reps" />
-                    <Button onClick={() => removeExercise(di, ei)} variant="ghost" size="sm" className="text-red-400"><Trash2 size={12} /></Button>
-                  </div>
-                ))}
-                <Button onClick={() => addExercise(di)} variant="ghost" size="sm" className="text-zinc-400 text-xs"><Plus size={12} className="mr-1" /> Ejercicio</Button>
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Zona Muscular</label>
+              <select value={form.muscle_group} onChange={e => setForm(f => ({ ...f, muscle_group: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white" data-testid="exercise-group-select">
+                {MUSCLE_GROUPS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Nombre del Ejercicio *</label>
+              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Press de Banca" className="input-dark" data-testid="exercise-name" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Maquina / Equipamiento</label>
+              <Input value={form.machine} onChange={e => setForm(f => ({ ...f, machine: e.target.value }))} placeholder="Ej: Banco plano + barra" className="input-dark" data-testid="exercise-machine" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Series</label>
+                <Input type="number" value={form.series} onChange={e => setForm(f => ({ ...f, series: parseInt(e.target.value) || 0 }))} className="input-dark" data-testid="exercise-series" />
               </div>
-            ))}
-
-            <Button onClick={addDay} variant="outline" size="sm" className="w-full border-zinc-600 text-zinc-300"><Plus size={14} className="mr-2" /> Agregar Dia</Button>
-            <Button onClick={handleCreate} className="btn-gym-primary w-full" data-testid="save-routine-btn"><Save size={16} className="mr-2" /> Guardar Rutina</Button>
+              <div>
+                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Repeticiones</label>
+                <Input value={form.reps} onChange={e => setForm(f => ({ ...f, reps: e.target.value }))} placeholder="12" className="input-dark" data-testid="exercise-reps" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>URL de Imagen (opcional)</label>
+              <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://ejemplo.com/imagen.jpg" className="input-dark" data-testid="exercise-image" />
+              {form.image_url && (
+                <img src={form.image_url} alt="Preview" className="mt-2 h-24 rounded-xl object-cover" style={{ background: '#111' }} onError={e => e.target.style.display='none'} />
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Descripcion / Instrucciones</label>
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Como realizar el ejercicio..." className="w-full px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white resize-none h-24" data-testid="exercise-desc" />
+            </div>
+            <Button onClick={handleSave} disabled={saving || !form.name} className="w-full btn-gym-primary" data-testid="save-exercise-btn">
+              {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : <Save size={16} className="mr-2" />}
+              {editingId ? 'Guardar Cambios' : 'Crear Ejercicio'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

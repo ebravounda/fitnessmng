@@ -24,7 +24,11 @@ export default function MemberOnlineClasses() {
 
   useEffect(() => {
     const gymId = gym?.id || '';
-    axios.get(`${API}/classes/online${gymId ? `?gym_id=${gymId}` : ''}`)
+    const memberId = localStorage.getItem('member_id') || '';
+    const params = new URLSearchParams();
+    if (gymId) params.set('gym_id', gymId);
+    if (memberId) params.set('member_id', memberId);
+    axios.get(`${API}/classes/online?${params.toString()}`)
       .then(res => setClasses(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));

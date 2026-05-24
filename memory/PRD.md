@@ -81,3 +81,11 @@ docker restart gym24-api
 - Vista posterior: trapecios, dorsales, espalda media, tríceps, lumbares, glúteos, isquiotibiales, gemelos
 - Cards expandibles con animaciones framer-motion
 - Botones rápidos de zona debajo del mapa corporal
+
+### Sesión 6 (May 2026)
+- RFID Live Capture: modal con grabación en vivo, input auto-focus, captura automática del UID
+- Clases Online: admin sube videos, socios los ven en PWA (Netflix fitness)
+- Backend: /api/classes/online (CRUD + stream), /api/exercises/custom (CRUD)
+- Imágenes ejercicios: integración con free-exercise-db (800+ ejercicios con fotos)
+- Quick nav PWA: añadido "Clases Online"
+- Sidebar admin: añadido "Clases Online" con icono Video

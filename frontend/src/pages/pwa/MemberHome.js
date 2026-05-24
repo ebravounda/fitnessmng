@@ -6,7 +6,7 @@ import { getMembershipStatus, getDaysRemaining } from '../../lib/utils';
 import { getLabels } from '../../lib/businessLabels';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Maximize2, AlertTriangle, CheckCircle, CreditCard, BarChart3, Calendar, Clock, Trophy, Dumbbell, Download, Smartphone } from 'lucide-react';
+import { X, Maximize2, AlertTriangle, CheckCircle, CreditCard, BarChart3, Calendar, Clock, Trophy, Dumbbell, Download, Smartphone, Video } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
 export default function MemberHome() {
@@ -328,6 +328,7 @@ export default function MemberHome() {
             { icon: Calendar, label: 'Clases', path: '/app/classes', testId: 'nav-classes' },
             { icon: Clock, label: 'Accesos', path: '/app/history', testId: 'nav-history' },
             { icon: CreditCard, label: labels.membership, path: '/app/membership', testId: 'nav-membership' },
+            { icon: Video, label: 'Clases Online', path: '/app/online-classes', testId: 'nav-online-classes' },
           ].map(({ icon: Icon, label, path, testId }) => (
             <button 
               key={path}

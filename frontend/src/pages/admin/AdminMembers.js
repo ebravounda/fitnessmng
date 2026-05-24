@@ -131,6 +131,10 @@ export default function AdminMembers() {
   const [memberVideos, setMemberVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [playingVideoUrl, setPlayingVideoUrl] = useState(null);
+  const [showRfidModal, setShowRfidModal] = useState(false);
+  const [rfidInput, setRfidInput] = useState('');
+  const [rfidListening, setRfidListening] = useState(false);
+  const [savingRfid, setSavingRfid] = useState(false);
 
   useEffect(() => { fetchMembers(); fetchPlans(); if (isSuperAdmin) fetchGyms(); }, [statusFilter]);
 
@@ -705,13 +709,8 @@ export default function AdminMembers() {
                         <DropdownMenuItem onClick={() => handleOpenEmails(member)} className="cursor-pointer text-blue-400" data-testid={`member-emails-${member.code}`}>
                           <Mail size={16} className="mr-2" /> Emails
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={async () => {
-                          const uid = prompt(`RFID para ${member.name}:\n\nActual: ${member.rfid_uid || 'Sin asignar'}\n\nIngresa el UID de la tarjeta/llavero RFID (o vacio para eliminar):`, member.rfid_uid || '');
-                          if (uid === null) return;
-                          try { await assignRFID(member.id, uid); toast.success(uid ? 'RFID asignado' : 'RFID eliminado'); fetchMembers(); }
-                          catch (err) { toast.error(err.response?.data?.detail || 'Error al asignar RFID'); }
-                        }} className="cursor-pointer text-orange-400" data-testid={`member-rfid-${member.code}`}>
-                          <CreditCard size={16} className="mr-2" /> {member.rfid_uid ? 'Cambiar RFID' : 'Asignar RFID'}
+                        <DropdownMenuItem onClick={() => { setSelectedMember(member); setShowRfidModal(true); setRfidInput(member.rfid_uid || ''); }} className="cursor-pointer text-orange-400" data-testid={`member-rfid-${member.code}`}>
+                          <CreditCard size={16} className="mr-2" /> {member.rfid_uid ? 'Cambiar RFID' : 'Grabar Pulsera/Llavero'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1346,6 +1345,116 @@ export default function AdminMembers() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* RFID Live Capture Modal */}
+      <Dialog open={showRfidModal} onOpenChange={(open) => { setShowRfidModal(open); setRfidListening(false); }}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard size={20} style={{ color: '#FF6600' }} />
+              Grabar Pulsera / Llavero RFID
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+              <p className="text-sm text-zinc-400 mb-1">Socio:</p>
+              <p className="font-bold">{selectedMember?.name}</p>
+              {selectedMember?.rfid_uid && (
+                <p className="text-xs text-orange-400 mt-1">RFID actual: {selectedMember.rfid_uid}</p>
+              )}
+            </div>
+
+            {rfidListening ? (
+              <div className="text-center py-6">
+                <div className="w-20 h-20 mx-auto rounded-full border-4 border-orange-500 flex items-center justify-center mb-4 animate-pulse" style={{ boxShadow: '0 0 30px rgba(255,102,0,0.3)' }}>
+                  <CreditCard size={32} style={{ color: '#FF6600' }} />
+                </div>
+                <p className="font-bold text-lg mb-1" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>Esperando lectura...</p>
+                <p className="text-xs text-zinc-500">Pasa la pulsera o llavero por el lector RFID</p>
+                <input
+                  autoFocus
+                  value={rfidInput}
+                  onChange={(e) => setRfidInput(e.target.value.toUpperCase())}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && rfidInput.trim()) {
+                      setSavingRfid(true);
+                      try {
+                        await assignRFID(selectedMember.id, rfidInput.trim());
+                        toast.success('Pulsera/llavero grabado correctamente');
+                        setShowRfidModal(false);
+                        setRfidListening(false);
+                        setRfidInput('');
+                        fetchMembers();
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || 'Error al grabar RFID');
+                      } finally { setSavingRfid(false); }
+                    }
+                  }}
+                  className="mt-4 w-full text-center text-2xl font-mono tracking-widest bg-black border-2 border-orange-500/50 rounded-xl px-4 py-3 text-orange-400 focus:outline-none focus:border-orange-500"
+                  style={{ caretColor: '#FF6600' }}
+                  placeholder="..."
+                  data-testid="rfid-live-input"
+                />
+                <p className="text-[10px] text-zinc-600 mt-2">El lector escribe automaticamente el UID</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setRfidListening(true); setRfidInput(''); }}
+                  className="w-full py-4 rounded-xl font-bold text-lg transition-all"
+                  style={{ background: 'linear-gradient(135deg, #FF6600, #E65C00)', color: '#FFF', fontFamily: 'Outfit' }}
+                  data-testid="rfid-start-listen-btn"
+                >
+                  Iniciar Grabacion
+                </button>
+                <p className="text-xs text-zinc-500 text-center">O escribe el UID manualmente:</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={rfidInput}
+                    onChange={(e) => setRfidInput(e.target.value.toUpperCase())}
+                    placeholder="UID del RFID"
+                    className="input-dark font-mono"
+                    data-testid="rfid-manual-input"
+                  />
+                  <Button
+                    onClick={async () => {
+                      if (!rfidInput.trim()) return;
+                      setSavingRfid(true);
+                      try {
+                        await assignRFID(selectedMember.id, rfidInput.trim());
+                        toast.success(rfidInput.trim() ? 'RFID asignado' : 'RFID eliminado');
+                        setShowRfidModal(false); setRfidInput(''); fetchMembers();
+                      } catch (err) { toast.error(err.response?.data?.detail || 'Error'); }
+                      finally { setSavingRfid(false); }
+                    }}
+                    disabled={savingRfid}
+                    className="btn-gym-primary shrink-0"
+                    data-testid="rfid-save-btn"
+                  >
+                    {savingRfid ? <Loader2 size={16} className="animate-spin" /> : 'Guardar'}
+                  </Button>
+                </div>
+                {selectedMember?.rfid_uid && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await assignRFID(selectedMember.id, '');
+                        toast.success('RFID eliminado');
+                        setShowRfidModal(false); fetchMembers();
+                      } catch (err) { toast.error('Error al eliminar'); }
+                    }}
+                    className="w-full text-center text-xs text-red-400 hover:text-red-300 py-2"
+                    data-testid="rfid-remove-btn"
+                  >
+                    Eliminar RFID actual
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
     </div>
   );

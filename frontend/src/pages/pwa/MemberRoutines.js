@@ -10,73 +10,73 @@ const EXERCISES = {
     label: 'Pecho',
     icon: '💪',
     exercises: [
-      { name: 'Press de Banca', machine: 'Banco plano + barra', series: 4, reps: '10-12', desc: 'Acuestate en el banco, agarra la barra a la anchura de los hombros. Baja hasta el pecho y empuja hacia arriba.' },
-      { name: 'Press Inclinado con Mancuernas', machine: 'Banco inclinado + mancuernas', series: 3, reps: '12', desc: 'Banco a 30-45 grados. Sube las mancuernas desde el pecho hasta arriba.' },
-      { name: 'Aperturas en Maquina', machine: 'Maquina Pec Deck / Contractora', series: 3, reps: '15', desc: 'Sentado en la maquina, junta los brazos por delante del pecho de forma controlada.' },
-      { name: 'Fondos en Paralelas', machine: 'Barras paralelas', series: 3, reps: '8-10', desc: 'Agarrate de las barras, baja el cuerpo flexionando codos e impulsate hacia arriba.' },
-      { name: 'Cruces en Polea', machine: 'Polea alta doble', series: 3, reps: '12-15', desc: 'De pie entre las poleas, junta las manos por delante del cuerpo con los brazos casi estirados.' },
+      { name: 'Press de Banca', machine: 'Banco plano + barra', series: 4, reps: '10-12', desc: 'Acuestate en el banco, agarra la barra a la anchura de los hombros. Baja hasta el pecho y empuja hacia arriba.', img: 'Barbell_Bench_Press_-_Medium_Grip' },
+      { name: 'Press Inclinado con Mancuernas', machine: 'Banco inclinado + mancuernas', series: 3, reps: '12', desc: 'Banco a 30-45 grados. Sube las mancuernas desde el pecho hasta arriba.', img: 'Dumbbell_Bench_Press' },
+      { name: 'Aperturas en Maquina', machine: 'Maquina Pec Deck / Contractora', series: 3, reps: '15', desc: 'Sentado en la maquina, junta los brazos por delante del pecho de forma controlada.', img: 'Butterfly' },
+      { name: 'Fondos en Paralelas', machine: 'Barras paralelas', series: 3, reps: '8-10', desc: 'Agarrate de las barras, baja el cuerpo flexionando codos e impulsate hacia arriba.', img: 'Dips_-_Chest_Version' },
+      { name: 'Cruces en Polea', machine: 'Polea alta doble', series: 3, reps: '12-15', desc: 'De pie entre las poleas, junta las manos por delante del cuerpo con los brazos casi estirados.', img: 'Cable_Crossover' },
     ]
   },
   hombros: {
     label: 'Hombros',
     icon: '🏋️',
     exercises: [
-      { name: 'Press Militar', machine: 'Barra + rack o maquina de hombros', series: 4, reps: '10', desc: 'Sentado o de pie, empuja la barra desde los hombros hasta arriba de la cabeza.' },
-      { name: 'Elevaciones Laterales', machine: 'Mancuernas ligeras', series: 3, reps: '15', desc: 'De pie, sube las mancuernas a los lados hasta la altura de los hombros.' },
-      { name: 'Elevaciones Frontales', machine: 'Mancuernas o disco', series: 3, reps: '12', desc: 'De pie, sube el peso por delante hasta la altura de los ojos.' },
-      { name: 'Pajaro Invertido', machine: 'Mancuernas o maquina', series: 3, reps: '15', desc: 'Inclinado hacia delante, abre los brazos hacia los lados trabajando el hombro posterior.' },
-      { name: 'Encogimientos de Hombros', machine: 'Mancuernas pesadas o barra', series: 4, reps: '12', desc: 'De pie con peso en las manos, sube los hombros hacia las orejas.' },
+      { name: 'Press Militar', machine: 'Barra + rack o maquina de hombros', series: 4, reps: '10', desc: 'Sentado o de pie, empuja la barra desde los hombros hasta arriba de la cabeza.', img: 'Barbell_Shoulder_Press' },
+      { name: 'Elevaciones Laterales', machine: 'Mancuernas ligeras', series: 3, reps: '15', desc: 'De pie, sube las mancuernas a los lados hasta la altura de los hombros.', img: 'Side_Lateral_Raise' },
+      { name: 'Elevaciones Frontales', machine: 'Mancuernas o disco', series: 3, reps: '12', desc: 'De pie, sube el peso por delante hasta la altura de los ojos.', img: 'Front_Dumbbell_Raise' },
+      { name: 'Pajaro Invertido', machine: 'Mancuernas o maquina', series: 3, reps: '15', desc: 'Inclinado hacia delante, abre los brazos hacia los lados trabajando el hombro posterior.', img: 'Reverse_Flyes' },
+      { name: 'Encogimientos de Hombros', machine: 'Mancuernas pesadas o barra', series: 4, reps: '12', desc: 'De pie con peso en las manos, sube los hombros hacia las orejas.', img: 'Barbell_Shrug' },
     ]
   },
   biceps: {
     label: 'Biceps',
     icon: '💪',
     exercises: [
-      { name: 'Curl con Barra', machine: 'Barra recta o Z', series: 4, reps: '10-12', desc: 'De pie, flexiona los codos para subir la barra hacia los hombros. No balancees el cuerpo.' },
-      { name: 'Curl Alterno con Mancuernas', machine: 'Mancuernas', series: 3, reps: '12 c/brazo', desc: 'Sentado o de pie, alterna subiendo cada mancuerna con rotacion de muneca.' },
-      { name: 'Curl en Banco Scott', machine: 'Banco Scott + barra Z', series: 3, reps: '12', desc: 'Apoya los brazos en el banco inclinado y flexiona subiendo la barra.' },
-      { name: 'Curl Martillo', machine: 'Mancuernas', series: 3, reps: '12', desc: 'Como el curl normal pero con las palmas mirando hacia dentro (agarre neutro).' },
-      { name: 'Curl en Polea Baja', machine: 'Polea baja + barra', series: 3, reps: '15', desc: 'De pie frente a la polea, flexiona los codos para subir la barra.' },
+      { name: 'Curl con Barra', machine: 'Barra recta o Z', series: 4, reps: '10-12', desc: 'De pie, flexiona los codos para subir la barra hacia los hombros. No balancees el cuerpo.', img: 'Barbell_Curl' },
+      { name: 'Curl Alterno con Mancuernas', machine: 'Mancuernas', series: 3, reps: '12 c/brazo', desc: 'Sentado o de pie, alterna subiendo cada mancuerna con rotacion de muneca.', img: 'Alternate_Dumbbell_Curl' },
+      { name: 'Curl en Banco Scott', machine: 'Banco Scott + barra Z', series: 3, reps: '12', desc: 'Apoya los brazos en el banco inclinado y flexiona subiendo la barra.', img: 'Preacher_Curl' },
+      { name: 'Curl Martillo', machine: 'Mancuernas', series: 3, reps: '12', desc: 'Como el curl normal pero con las palmas mirando hacia dentro (agarre neutro).', img: 'Hammer_Curls' },
+      { name: 'Curl en Polea Baja', machine: 'Polea baja + barra', series: 3, reps: '15', desc: 'De pie frente a la polea, flexiona los codos para subir la barra.', img: 'Cable_Hammer_Curls_-_Rope_Attachment' },
     ]
   },
   antebrazos: {
     label: 'Antebrazos',
     icon: '✊',
     exercises: [
-      { name: 'Curl de Muneca', machine: 'Barra o mancuernas', series: 3, reps: '20', desc: 'Sentado con los antebrazos apoyados, flexiona las munecas hacia arriba.' },
-      { name: 'Curl de Muneca Invertido', machine: 'Barra o mancuernas', series: 3, reps: '15', desc: 'Igual que el anterior pero con las palmas hacia abajo.' },
-      { name: 'Agarre de Farmer Walk', machine: 'Mancuernas pesadas', series: 3, reps: '30 seg', desc: 'Camina sosteniendo mancuernas pesadas a los lados durante 30 segundos.' },
+      { name: 'Curl de Muneca', machine: 'Barra o mancuernas', series: 3, reps: '20', desc: 'Sentado con los antebrazos apoyados, flexiona las munecas hacia arriba.', img: 'Palms-Up_Barbell_Wrist_Curl_Over_A_Bench' },
+      { name: 'Curl de Muneca Invertido', machine: 'Barra o mancuernas', series: 3, reps: '15', desc: 'Igual que el anterior pero con las palmas hacia abajo.', img: 'Palms-Down_Wrist_Curl_Over_A_Bench' },
+      { name: 'Agarre Farmer Walk', machine: 'Mancuernas pesadas', series: 3, reps: '30 seg', desc: 'Camina sosteniendo mancuernas pesadas a los lados durante 30 segundos.', img: 'Farmer_Walk' },
     ]
   },
   abdomen: {
     label: 'Abdomen / Core',
     icon: '🔥',
     exercises: [
-      { name: 'Crunch Abdominal', machine: 'Colchoneta o maquina', series: 4, reps: '20', desc: 'Tumbado boca arriba, eleva los hombros del suelo contrayendo el abdomen.' },
-      { name: 'Plancha Frontal', machine: 'Colchoneta', series: 3, reps: '45 seg', desc: 'Apoyado en antebrazos y puntas de pies, mantén el cuerpo recto como una tabla.' },
-      { name: 'Elevacion de Piernas', machine: 'Barra de dominadas o banco', series: 3, reps: '15', desc: 'Colgado de la barra, sube las piernas rectas hasta 90 grados.' },
-      { name: 'Russian Twist', machine: 'Disco o mancuerna', series: 3, reps: '20 (10+10)', desc: 'Sentado con las piernas elevadas, gira el torso tocando el peso a cada lado.' },
-      { name: 'Crunch en Polea', machine: 'Polea alta + cuerda', series: 3, reps: '15', desc: 'De rodillas frente a la polea, flexiona el tronco hacia abajo contrayendo el abdomen.' },
+      { name: 'Crunch Abdominal', machine: 'Colchoneta o maquina', series: 4, reps: '20', desc: 'Tumbado boca arriba, eleva los hombros del suelo contrayendo el abdomen.', img: 'Crunches' },
+      { name: 'Plancha Frontal', machine: 'Colchoneta', series: 3, reps: '45 seg', desc: 'Apoyado en antebrazos y puntas de pies, mantén el cuerpo recto como una tabla.', img: 'Plank' },
+      { name: 'Elevacion de Piernas', machine: 'Barra de dominadas o banco', series: 3, reps: '15', desc: 'Colgado de la barra, sube las piernas rectas hasta 90 grados.', img: 'Hanging_Leg_Raise' },
+      { name: 'Russian Twist', machine: 'Disco o mancuerna', series: 3, reps: '20 (10+10)', desc: 'Sentado con las piernas elevadas, gira el torso tocando el peso a cada lado.', img: 'Russian_Twist' },
+      { name: 'Crunch en Polea', machine: 'Polea alta + cuerda', series: 3, reps: '15', desc: 'De rodillas frente a la polea, flexiona el tronco hacia abajo contrayendo el abdomen.', img: 'Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists' },
     ]
   },
   cuadriceps: {
     label: 'Cuadriceps',
     icon: '🦵',
     exercises: [
-      { name: 'Sentadilla con Barra', machine: 'Rack de sentadillas + barra', series: 4, reps: '10', desc: 'Barra en la espalda, baja hasta que los muslos esten paralelos al suelo y sube.' },
-      { name: 'Prensa de Piernas', machine: 'Maquina de prensa', series: 4, reps: '12', desc: 'Sentado en la prensa, empuja la plataforma con los pies a la anchura de los hombros.' },
-      { name: 'Extension de Piernas', machine: 'Maquina de extensiones', series: 3, reps: '15', desc: 'Sentado, extiende las piernas hacia arriba de forma controlada.' },
-      { name: 'Zancadas con Mancuernas', machine: 'Mancuernas', series: 3, reps: '12 c/pierna', desc: 'Da un paso largo al frente, baja la rodilla trasera casi al suelo y vuelve.' },
-      { name: 'Sentadilla Hack', machine: 'Maquina Hack', series: 3, reps: '12', desc: 'Apoyado en la maquina, baja y sube con las piernas.' },
+      { name: 'Sentadilla con Barra', machine: 'Rack de sentadillas + barra', series: 4, reps: '10', desc: 'Barra en la espalda, baja hasta que los muslos esten paralelos al suelo y sube.', img: 'Barbell_Squat' },
+      { name: 'Prensa de Piernas', machine: 'Maquina de prensa', series: 4, reps: '12', desc: 'Sentado en la prensa, empuja la plataforma con los pies a la anchura de los hombros.', img: 'Leg_Press' },
+      { name: 'Extension de Piernas', machine: 'Maquina de extensiones', series: 3, reps: '15', desc: 'Sentado, extiende las piernas hacia arriba de forma controlada.', img: 'Leg_Extensions' },
+      { name: 'Zancadas con Mancuernas', machine: 'Mancuernas', series: 3, reps: '12 c/pierna', desc: 'Da un paso largo al frente, baja la rodilla trasera casi al suelo y vuelve.', img: 'Dumbbell_Lunges' },
+      { name: 'Sentadilla Hack', machine: 'Maquina Hack', series: 3, reps: '12', desc: 'Apoyado en la maquina, baja y sube con las piernas.', img: 'Hack_Squat' },
     ]
   },
   gemelos_f: {
     label: 'Tibiales / Gemelos',
     icon: '🦶',
     exercises: [
-      { name: 'Elevacion de Talones de Pie', machine: 'Maquina de gemelos o Smith', series: 4, reps: '20', desc: 'De pie, sube y baja los talones de forma controlada.' },
-      { name: 'Elevacion de Talones Sentado', machine: 'Maquina de gemelos sentado', series: 3, reps: '20', desc: 'Sentado con las rodillas debajo del soporte, sube los talones.' },
-      { name: 'Gemelos en Prensa', machine: 'Maquina de prensa', series: 3, reps: '15', desc: 'En la prensa, apoya solo la punta de los pies y empuja extendiendo los tobillos.' },
+      { name: 'Elevacion de Talones de Pie', machine: 'Maquina de gemelos o Smith', series: 4, reps: '20', desc: 'De pie, sube y baja los talones de forma controlada.', img: 'Standing_Calf_Raises' },
+      { name: 'Elevacion de Talones Sentado', machine: 'Maquina de gemelos sentado', series: 3, reps: '20', desc: 'Sentado con las rodillas debajo del soporte, sube los talones.', img: 'Seated_Calf_Raise' },
+      { name: 'Gemelos en Prensa', machine: 'Maquina de prensa', series: 3, reps: '15', desc: 'En la prensa, apoya solo la punta de los pies y empuja extendiendo los tobillos.', img: 'Calf_Press_On_The_Leg_Press_Machine' },
     ]
   },
   // BACK
@@ -84,81 +84,83 @@ const EXERCISES = {
     label: 'Trapecios',
     icon: '🏋️',
     exercises: [
-      { name: 'Encogimientos con Barra', machine: 'Barra o mancuernas pesadas', series: 4, reps: '12', desc: 'De pie, sube los hombros hacia las orejas con peso en las manos.' },
-      { name: 'Remo al Menton', machine: 'Barra o polea baja', series: 3, reps: '12', desc: 'De pie, sube la barra pegada al cuerpo hasta la altura del menton con los codos altos.' },
-      { name: 'Face Pull', machine: 'Polea alta + cuerda', series: 3, reps: '15', desc: 'Tira de la cuerda hacia la cara abriendo los codos hacia los lados.' },
+      { name: 'Encogimientos con Barra', machine: 'Barra o mancuernas pesadas', series: 4, reps: '12', desc: 'De pie, sube los hombros hacia las orejas con peso en las manos.', img: 'Barbell_Shrug' },
+      { name: 'Remo al Menton', machine: 'Barra o polea baja', series: 3, reps: '12', desc: 'De pie, sube la barra pegada al cuerpo hasta la altura del menton con los codos altos.', img: 'Upright_Barbell_Row' },
+      { name: 'Face Pull', machine: 'Polea alta + cuerda', series: 3, reps: '15', desc: 'Tira de la cuerda hacia la cara abriendo los codos hacia los lados.', img: 'Face_Pull' },
     ]
   },
   dorsales: {
     label: 'Dorsales',
     icon: '🔙',
     exercises: [
-      { name: 'Jalon al Pecho', machine: 'Polea alta / Maquina de jalon', series: 4, reps: '12', desc: 'Sentado, tira de la barra hacia el pecho con los codos apuntando al suelo.' },
-      { name: 'Dominadas', machine: 'Barra de dominadas', series: 3, reps: '8-10', desc: 'Cuelgate de la barra y sube hasta que la barbilla pase la barra.' },
-      { name: 'Remo con Barra', machine: 'Barra', series: 4, reps: '10', desc: 'Inclinado hacia delante, tira de la barra hacia el abdomen.' },
-      { name: 'Remo con Mancuerna', machine: 'Banco plano + mancuerna', series: 3, reps: '12 c/brazo', desc: 'Apoyado con una rodilla en el banco, tira de la mancuerna hacia la cadera.' },
-      { name: 'Pullover en Polea', machine: 'Polea alta + barra recta', series: 3, reps: '15', desc: 'De pie, empuja la barra hacia abajo con los brazos casi estirados.' },
+      { name: 'Jalon al Pecho', machine: 'Polea alta / Maquina de jalon', series: 4, reps: '12', desc: 'Sentado, tira de la barra hacia el pecho con los codos apuntando al suelo.', img: 'Wide-Grip_Lat_Pulldown' },
+      { name: 'Dominadas', machine: 'Barra de dominadas', series: 3, reps: '8-10', desc: 'Cuelgate de la barra y sube hasta que la barbilla pase la barra.', img: 'Pullups' },
+      { name: 'Remo con Barra', machine: 'Barra', series: 4, reps: '10', desc: 'Inclinado hacia delante, tira de la barra hacia el abdomen.', img: 'Bent_Over_Barbell_Row' },
+      { name: 'Remo con Mancuerna', machine: 'Banco plano + mancuerna', series: 3, reps: '12 c/brazo', desc: 'Apoyado con una rodilla en el banco, tira de la mancuerna hacia la cadera.', img: 'One-Arm_Dumbbell_Row' },
+      { name: 'Pullover en Polea', machine: 'Polea alta + barra recta', series: 3, reps: '15', desc: 'De pie, empuja la barra hacia abajo con los brazos casi estirados.', img: 'Straight-Arm_Dumbbell_Pullover' },
     ]
   },
   espalda_media: {
     label: 'Espalda Media',
     icon: '🔙',
     exercises: [
-      { name: 'Remo en Maquina', machine: 'Maquina de remo', series: 4, reps: '12', desc: 'Sentado en la maquina, tira de las agarraderas hacia el pecho apretando las escapulas.' },
-      { name: 'Remo en Polea Baja', machine: 'Polea baja + triangulo', series: 3, reps: '12', desc: 'Sentado, tira del agarre hacia el abdomen manteniendo la espalda recta.' },
-      { name: 'Remo T-Bar', machine: 'Barra T o landmine', series: 3, reps: '10', desc: 'Inclinado, tira de la barra T hacia el pecho.' },
+      { name: 'Remo en Maquina', machine: 'Maquina de remo', series: 4, reps: '12', desc: 'Sentado en la maquina, tira de las agarraderas hacia el pecho apretando las escapulas.', img: 'Seated_Cable_Rows' },
+      { name: 'Remo en Polea Baja', machine: 'Polea baja + triangulo', series: 3, reps: '12', desc: 'Sentado, tira del agarre hacia el abdomen manteniendo la espalda recta.', img: 'Seated_Cable_Rows' },
+      { name: 'Remo T-Bar', machine: 'Barra T o landmine', series: 3, reps: '10', desc: 'Inclinado, tira de la barra T hacia el pecho.', img: 'Lying_T-Bar_Row' },
     ]
   },
   triceps: {
     label: 'Triceps',
     icon: '💪',
     exercises: [
-      { name: 'Extension en Polea Alta', machine: 'Polea alta + barra o cuerda', series: 4, reps: '12', desc: 'De pie, empuja la barra/cuerda hacia abajo extendiendo los codos.' },
-      { name: 'Fondos en Banco', machine: 'Banco', series: 3, reps: '12', desc: 'Manos en el banco detras de ti, baja el cuerpo flexionando codos y sube.' },
-      { name: 'Press Frances', machine: 'Barra Z o mancuernas', series: 3, reps: '12', desc: 'Tumbado, baja la barra hacia la frente y extiende los brazos.' },
-      { name: 'Patada de Triceps', machine: 'Mancuerna', series: 3, reps: '12 c/brazo', desc: 'Inclinado con un brazo, extiende el codo hacia atras.' },
-      { name: 'Extension Sobre Cabeza', machine: 'Mancuerna o polea baja', series: 3, reps: '12', desc: 'Sentado o de pie, sube el peso por detras de la cabeza y extiende arriba.' },
+      { name: 'Extension en Polea Alta', machine: 'Polea alta + barra o cuerda', series: 4, reps: '12', desc: 'De pie, empuja la barra/cuerda hacia abajo extendiendo los codos.', img: 'Triceps_Pushdown' },
+      { name: 'Fondos en Banco', machine: 'Banco', series: 3, reps: '12', desc: 'Manos en el banco detras de ti, baja el cuerpo flexionando codos y sube.', img: 'Bench_Dips' },
+      { name: 'Press Frances', machine: 'Barra Z o mancuernas', series: 3, reps: '12', desc: 'Tumbado, baja la barra hacia la frente y extiende los brazos.', img: 'EZ-Bar_Skullcrusher' },
+      { name: 'Patada de Triceps', machine: 'Mancuerna', series: 3, reps: '12 c/brazo', desc: 'Inclinado con un brazo, extiende el codo hacia atras.', img: 'Tricep_Dumbbell_Kickback' },
+      { name: 'Extension Sobre Cabeza', machine: 'Mancuerna o polea baja', series: 3, reps: '12', desc: 'Sentado o de pie, sube el peso por detras de la cabeza y extiende arriba.', img: 'Standing_Dumbbell_Triceps_Extension' },
     ]
   },
   lumbares: {
     label: 'Lumbares',
     icon: '🔙',
     exercises: [
-      { name: 'Hiperextensiones', machine: 'Banco de hiperextensiones', series: 3, reps: '15', desc: 'Boca abajo en el banco, baja el torso y sube apretando los lumbares.' },
-      { name: 'Peso Muerto Rumano', machine: 'Barra', series: 4, reps: '10', desc: 'De pie, baja la barra deslizandola por las piernas manteniendo la espalda recta.' },
-      { name: 'Buenos Dias', machine: 'Barra ligera', series: 3, reps: '12', desc: 'Barra en la espalda, inclinate hacia delante y vuelve a subir.' },
+      { name: 'Hiperextensiones', machine: 'Banco de hiperextensiones', series: 3, reps: '15', desc: 'Boca abajo en el banco, baja el torso y sube apretando los lumbares.', img: 'Hyperextensions__Back_Extensions_' },
+      { name: 'Peso Muerto Rumano', machine: 'Barra', series: 4, reps: '10', desc: 'De pie, baja la barra deslizandola por las piernas manteniendo la espalda recta.', img: 'Romanian_Deadlift' },
+      { name: 'Buenos Dias', machine: 'Barra ligera', series: 3, reps: '12', desc: 'Barra en la espalda, inclinate hacia delante y vuelve a subir.', img: 'Good_Morning' },
     ]
   },
   gluteos: {
     label: 'Gluteos',
     icon: '🍑',
     exercises: [
-      { name: 'Hip Thrust', machine: 'Banco + barra', series: 4, reps: '12', desc: 'Espalda apoyada en el banco, barra sobre la cadera. Sube la cadera apretando gluteos.' },
-      { name: 'Sentadilla Sumo', machine: 'Barra o mancuerna', series: 3, reps: '12', desc: 'Piernas mas abiertas de lo normal con pies hacia fuera. Baja y sube.' },
-      { name: 'Patada en Maquina', machine: 'Maquina de gluteos / Polea baja', series: 3, reps: '15 c/pierna', desc: 'De pie, patea hacia atras con la pierna contra la resistencia.' },
-      { name: 'Puente de Gluteos', machine: 'Colchoneta + disco', series: 3, reps: '20', desc: 'Tumbado boca arriba, sube la cadera apretando gluteos arriba.' },
+      { name: 'Hip Thrust', machine: 'Banco + barra', series: 4, reps: '12', desc: 'Espalda apoyada en el banco, barra sobre la cadera. Sube la cadera apretando gluteos.', img: 'Barbell_Hip_Thrust' },
+      { name: 'Sentadilla Sumo', machine: 'Barra o mancuerna', series: 3, reps: '12', desc: 'Piernas mas abiertas de lo normal con pies hacia fuera. Baja y sube.', img: 'Sumo_Deadlift' },
+      { name: 'Patada en Maquina', machine: 'Maquina de gluteos / Polea baja', series: 3, reps: '15 c/pierna', desc: 'De pie, patea hacia atras con la pierna contra la resistencia.', img: 'Glute_Kickback' },
+      { name: 'Puente de Gluteos', machine: 'Colchoneta + disco', series: 3, reps: '20', desc: 'Tumbado boca arriba, sube la cadera apretando gluteos arriba.', img: 'Barbell_Glute_Bridge' },
     ]
   },
   isquiotibiales: {
     label: 'Isquiotibiales',
     icon: '🦵',
     exercises: [
-      { name: 'Curl Femoral Tumbado', machine: 'Maquina de curl femoral', series: 4, reps: '12', desc: 'Boca abajo en la maquina, flexiona las rodillas llevando los talones a los gluteos.' },
-      { name: 'Curl Femoral Sentado', machine: 'Maquina de curl sentado', series: 3, reps: '12', desc: 'Sentado, flexiona las piernas hacia atras contra la resistencia.' },
-      { name: 'Peso Muerto Rumano', machine: 'Barra o mancuernas', series: 4, reps: '10', desc: 'Baja el peso con piernas casi rectas sintiendo el estiramiento atras del muslo.' },
-      { name: 'Peso Muerto a Una Pierna', machine: 'Mancuerna', series: 3, reps: '10 c/pierna', desc: 'De pie sobre una pierna, inclinate hacia delante con peso en la mano contraria.' },
+      { name: 'Curl Femoral Tumbado', machine: 'Maquina de curl femoral', series: 4, reps: '12', desc: 'Boca abajo en la maquina, flexiona las rodillas llevando los talones a los gluteos.', img: 'Lying_Leg_Curls' },
+      { name: 'Curl Femoral Sentado', machine: 'Maquina de curl sentado', series: 3, reps: '12', desc: 'Sentado, flexiona las piernas hacia atras contra la resistencia.', img: 'Seated_Leg_Curl' },
+      { name: 'Peso Muerto Rumano', machine: 'Barra o mancuernas', series: 4, reps: '10', desc: 'Baja el peso con piernas casi rectas sintiendo el estiramiento atras del muslo.', img: 'Romanian_Deadlift' },
+      { name: 'Peso Muerto a Una Pierna', machine: 'Mancuerna', series: 3, reps: '10 c/pierna', desc: 'De pie sobre una pierna, inclinate hacia delante con peso en la mano contraria.', img: 'Stiff-Legged_Dumbbell_Deadlift' },
     ]
   },
   gemelos: {
     label: 'Gemelos',
     icon: '🦶',
     exercises: [
-      { name: 'Elevacion de Talones de Pie', machine: 'Maquina de gemelos o Smith', series: 4, reps: '20', desc: 'De pie sobre una plataforma, sube y baja los talones lentamente.' },
-      { name: 'Elevacion de Talones Sentado', machine: 'Maquina de gemelos sentado', series: 3, reps: '20', desc: 'Sentado, sube los talones con las rodillas debajo del soporte.' },
-      { name: 'Saltos de Pantorrilla', machine: 'Peso corporal', series: 3, reps: '15', desc: 'De pie, haz pequenos saltos impulsandote solo con los gemelos.' },
+      { name: 'Elevacion de Talones de Pie', machine: 'Maquina de gemelos o Smith', series: 4, reps: '20', desc: 'De pie sobre una plataforma, sube y baja los talones lentamente.', img: 'Standing_Calf_Raises' },
+      { name: 'Elevacion de Talones Sentado', machine: 'Maquina de gemelos sentado', series: 3, reps: '20', desc: 'Sentado, sube los talones con las rodillas debajo del soporte.', img: 'Seated_Calf_Raise' },
+      { name: 'Saltos de Pantorrilla', machine: 'Peso corporal', series: 3, reps: '15', desc: 'De pie, haz pequenos saltos impulsandote solo con los gemelos.', img: 'Calf_Press_On_The_Leg_Press_Machine' },
     ]
   }
 };
+
+const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
 
 export default function MemberRoutines() {
   const navigate = useNavigate();
@@ -299,6 +301,15 @@ export default function MemberRoutines() {
                       >
                         <div className="px-4 pb-4 pt-0 space-y-3">
                           <div className="h-[1px] w-full" style={{ background: 'var(--border-primary)' }} />
+                          
+                          {/* Exercise images */}
+                          {exercise.img && (
+                            <div className="flex gap-2 overflow-x-auto rounded-xl">
+                              <img src={`${IMG_BASE}/${exercise.img}/0.jpg`} alt={exercise.name} className="h-36 rounded-xl object-cover" style={{ background: '#111' }} onError={e => e.target.style.display='none'} />
+                              <img src={`${IMG_BASE}/${exercise.img}/1.jpg`} alt={exercise.name} className="h-36 rounded-xl object-cover" style={{ background: '#111' }} onError={e => e.target.style.display='none'} />
+                            </div>
+                          )}
+                          
                           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{exercise.desc}</p>
                           
                           <div className="flex gap-3">

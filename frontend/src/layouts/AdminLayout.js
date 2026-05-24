@@ -8,7 +8,7 @@ import {
   Calendar, Clock, Bell, Shield, QrCode, Menu, X, ChevronLeft,
   LogOut, Smartphone, UserCheck, DollarSign, Mail, ShoppingCart,
   Layers, Code, Megaphone, BarChart3, ClipboardList, Database, Monitor, Trophy, Dumbbell,
-  Sun, Moon, AlertOctagon
+  Sun, Moon, AlertOctagon, Video
 } from 'lucide-react';
 
 const getNavItems = (role, isImpersonating, permissions, labels) => {
@@ -35,6 +35,7 @@ const getNavItems = (role, isImpersonating, permissions, labels) => {
     { path: '/admin/security', icon: Shield, label: 'Seguridad', roles: ['super_admin'] },
     { path: '/admin/gamification', icon: Trophy, label: labels.gamification, roles: ['super_admin', 'gym_admin', 'gym_manager'] },
     { path: '/admin/routines', icon: Dumbbell, label: labels.routines, roles: ['super_admin', 'gym_admin', 'trainer'] },
+    { path: '/admin/online-classes', icon: Video, label: 'Clases Online', roles: ['super_admin', 'gym_admin'] },
     { path: '/admin/templates', icon: Mail, label: 'Plantillas Email', roles: ['super_admin', 'gym_admin'] },
     { path: '/admin/notifications', icon: Bell, label: 'Notificaciones', roles: ['super_admin', 'gym_admin', 'gym_manager'], perm: 'notifications_send' },
     { path: '/admin/broadcast', icon: Megaphone, label: 'Comunicados', roles: ['super_admin', 'gym_admin'] },

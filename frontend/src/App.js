@@ -47,6 +47,7 @@ import AdminSecurity from "./pages/admin/AdminSecurity";
 import AdminDeviceMonitor from "./pages/admin/AdminDeviceMonitor";
 import AdminGamification from "./pages/admin/AdminGamification";
 import AdminRoutines from "./pages/admin/AdminRoutines";
+import AdminOnlineClasses from "./pages/admin/AdminOnlineClasses";
 import TrainerDashboard from "./pages/admin/TrainerDashboard";
 
 // PWA Pages
@@ -63,6 +64,7 @@ import PaymentSuccess from "./pages/pwa/PaymentSuccess";
 import PublicRegister from "./pages/pwa/PublicRegister";
 import MemberGamification from "./pages/pwa/MemberGamification";
 import MemberRoutines from "./pages/pwa/MemberRoutines";
+import MemberOnlineClasses from "./pages/pwa/MemberOnlineClasses";
 
 // Smart Dashboard: shows TrainerDashboard for trainers, AdminDashboard for others
 const SmartDashboard = () => {
@@ -209,6 +211,7 @@ function AppRoutes() {
       <Route path="/admin/device-monitor" element={<AdminRoute><AdminDeviceMonitor /></AdminRoute>} />
       <Route path="/admin/gamification" element={<AdminRoute><AdminGamification /></AdminRoute>} />
       <Route path="/admin/routines" element={<AdminRoute><AdminRoutines /></AdminRoute>} />
+      <Route path="/admin/online-classes" element={<AdminRoute><AdminOnlineClasses /></AdminRoute>} />
       
       {/* PWA/Member Routes */}
       <Route path="/app/login" element={<MemberLogin />} />
@@ -220,6 +223,7 @@ function AppRoutes() {
       <Route path="/app/stats" element={<MemberRoute><MemberStats /></MemberRoute>} />
       <Route path="/app/achievements" element={<MemberRoute><MemberGamification /></MemberRoute>} />
       <Route path="/app/routines" element={<MemberRoute><MemberRoutines /></MemberRoute>} />
+      <Route path="/app/online-classes" element={<MemberRoute><MemberOnlineClasses /></MemberRoute>} />
       <Route path="/app/membership" element={<MemberRoute><MemberMembership /></MemberRoute>} />
       <Route path="/app/profile" element={<MemberRoute><MemberProfile /></MemberRoute>} />
       <Route path="/app/payment-success" element={<MemberRoute><PaymentSuccess /></MemberRoute>} />

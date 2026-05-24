@@ -35,6 +35,7 @@ from routes.whmcs_routes import router as whmcs_router
 from routes.redsys_routes import router as redsys_router
 from routes.video_routes import router as video_router
 from routes.assistant_routes import router as assistant_router
+from routes.classes_online_routes import router as classes_online_router
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ app.include_router(whmcs_router)
 app.include_router(redsys_router)
 app.include_router(video_router)
 app.include_router(assistant_router)
+app.include_router(classes_online_router)
 
 app.add_middleware(
     CORSMiddleware,

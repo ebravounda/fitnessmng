@@ -113,64 +113,80 @@ const MemberRoute = ({ children }) => {
 // Landing Page
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8 relative overflow-hidden">
-      {/* Background gradient orbs */}
-      <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full opacity-[0.07]" style={{ background: 'radial-gradient(circle, #FF6600 0%, transparent 70%)' }} />
-      <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] rounded-full opacity-[0.05]" style={{ background: 'radial-gradient(circle, #FF6600 0%, transparent 70%)' }} />
-      
-      {/* Grid pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,102,0,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,102,0,0.3) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
-      
-      <div className="relative z-10 text-center max-w-2xl">
-        {/* Logo */}
-        <div className="mb-8">
-          <img src="/logo192.png" alt="Gym24" className="w-24 h-24 mx-auto rounded-2xl shadow-2xl" style={{ boxShadow: '0 0 40px rgba(255,102,0,0.2)' }} />
+    <div className="min-h-screen bg-[#050505] relative overflow-hidden">
+      {/* Hero background image with dark overlay */}
+      <div className="absolute inset-0">
+        <img src="/images/gym_hero_bg.png" alt="" className="w-full h-full object-cover" />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.85) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center top, rgba(255,102,0,0.08) 0%, transparent 60%)' }} />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
+        <div className="text-center max-w-3xl">
+          {/* Logo */}
+          <div className="mb-6">
+            <img src="/logo192.png" alt="Gym24" className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-2xl" style={{ boxShadow: '0 0 60px rgba(255,102,0,0.2), 0 0 120px rgba(255,102,0,0.05)' }} />
+          </div>
+          
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <span style={{ color: '#FF6600', textShadow: '0 0 40px rgba(255,102,0,0.3)' }}>Gym</span><span className="text-white">24</span>
+          </h1>
+          <p className="text-white/50 text-base sm:text-lg mb-12 font-light tracking-wide max-w-md mx-auto">
+            Control de acceso inteligente para tu negocio fitness
+          </p>
+          
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+            <a 
+              href="/admin/login"
+              className="group relative text-center text-base font-bold px-10 py-4 rounded-2xl overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{ fontFamily: 'Outfit, sans-serif' }}
+              data-testid="admin-access-btn"
+            >
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #FF6600 0%, #CC5200 100%)' }} />
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'linear-gradient(135deg, #FF7722 0%, #FF6600 100%)' }} />
+              <div className="absolute inset-[-1px] rounded-2xl opacity-50" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.2), transparent)', mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', maskComposite: 'xor', WebkitMaskComposite: 'xor', padding: '1px' }} />
+              <span className="relative text-white flex items-center justify-center gap-2">
+                Panel de Administracion
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
+            </a>
+            <a 
+              href="/app/login"
+              className="group px-10 py-4 rounded-2xl text-white/90 font-bold transition-all text-center hover:scale-[1.02] active:scale-[0.98] backdrop-blur-sm"
+              style={{ fontFamily: 'Outfit, sans-serif', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              data-testid="member-access-btn"
+            >
+              <span className="flex items-center justify-center gap-2">
+                Acceso Socios
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-50 group-hover:opacity-100 transition-all"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M7 12h.01M7 17h.01"/></svg>
+              </span>
+            </a>
+          </div>
+          
+          {/* Feature pills */}
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+            {[
+              { label: 'QR Dinamico', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z' },
+              { label: 'RFID / Pulseras', icon: 'M2 12a10 10 0 1020 0 10 10 0 00-20 0zM12 8v8M8 12h8' },
+              { label: '24/7 Acceso', icon: 'M12 2v10l4.5 4.5' },
+              { label: 'Video Seguridad', icon: 'M23 7l-7 5 7 5V7zM14 5H3a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2z' },
+            ].map((f, i) => (
+              <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm"
+                style={{ background: 'rgba(255,102,0,0.06)', border: '1px solid rgba(255,102,0,0.12)' }}>
+                <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.15)' }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FF6600" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={f.icon}/></svg>
+                </div>
+                <span className="text-xs font-semibold text-white/60" style={{ fontFamily: 'Outfit' }}>{f.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        
-        <h1 className="text-6xl sm:text-7xl font-black tracking-tighter mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>
-          <span style={{ color: '#FF6600' }}>Gym</span><span className="text-white">24</span>
-        </h1>
-        <p className="text-[#777] text-lg mb-14 font-light tracking-wide">
-          Control de acceso inteligente
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <a 
-            href="/admin/login"
-            className="btn-gym-primary text-center text-base px-10 py-4"
-            data-testid="admin-access-btn"
-          >
-            Panel de Administración
-          </a>
-          <a 
-            href="/app/login"
-            className="px-10 py-4 rounded-xl border border-[#222] hover:border-[#FF6600]/30 text-white font-semibold transition-all text-center hover:bg-[#FF6600]/5"
-            style={{ fontFamily: 'Outfit, sans-serif' }}
-            data-testid="member-access-btn"
-          >
-            Acceso Socios
-          </a>
-        </div>
-        
-        <div className="mt-20 flex justify-center gap-16">
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid rgba(255,102,0,0.15)' }}>
-              <span className="text-2xl font-black" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>QR</span>
-            </div>
-            <p className="text-[#555] text-xs font-medium uppercase tracking-widest">Dinámico</p>
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid rgba(255,102,0,0.15)' }}>
-              <span className="text-2xl font-black" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>24/7</span>
-            </div>
-            <p className="text-[#555] text-xs font-medium uppercase tracking-widest">Acceso</p>
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'rgba(255,102,0,0.1)', border: '1px solid rgba(255,102,0,0.15)' }}>
-              <span className="text-xl font-black" style={{ color: '#FF6600', fontFamily: 'Outfit' }}>100%</span>
-            </div>
-            <p className="text-[#555] text-xs font-medium uppercase tracking-widest">Seguro</p>
-          </div>
+
+        {/* Bottom subtle branding */}
+        <div className="absolute bottom-6 text-center">
+          <p className="text-white/20 text-[10px] tracking-widest uppercase" style={{ fontFamily: 'Outfit' }}>Powered by Gym24.app</p>
         </div>
       </div>
     </div>

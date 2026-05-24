@@ -63,10 +63,10 @@ async def create_online_class(
 async def list_online_classes(gym_id: Optional[str] = None, member_id: Optional[str] = None):
     query = {"active": True}
     if gym_id:
-        query["gym_id"] = gym_id
+        query["$or"] = [{"gym_id": gym_id}, {"gym_id": None}]
+    
     classes = await db.online_classes.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     
-    # Filter by member if specified
     if member_id:
         classes = [c for c in classes if c.get("assigned_to") == "all" or member_id in c.get("member_ids", [])]
     
@@ -135,6 +135,40 @@ async def create_youtube_class(body: dict, admin: dict = Depends(get_current_adm
     await db.online_classes.insert_one(doc)
     doc.pop("_id", None)
     return doc
+
+
+@router.put("/online-classes/{class_id}")
+async def update_online_class(class_id: str, body: dict, admin: dict = Depends(get_current_admin)):
+    """Update an online class (title, description, category, duration, assignment, youtube_url)."""
+    doc = await db.online_classes.find_one({"id": class_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
+    
+    updates = {}
+    for field in ["title", "description", "category", "duration_minutes", "youtube_url"]:
+        if field in body:
+            updates[field] = body[field]
+    
+    if "assigned_to" in body:
+        assigned_to = body["assigned_to"]
+        updates["assigned_to"] = assigned_to
+        updates["member_ids"] = [] if assigned_to == "all" else [mid.strip() for mid in assigned_to.split(",") if mid.strip()]
+    
+    if "youtube_url" in body:
+        yt_url = body["youtube_url"]
+        video_yt_id = ""
+        if "youtu.be/" in yt_url:
+            video_yt_id = yt_url.split("youtu.be/")[-1].split("?")[0]
+        elif "v=" in yt_url:
+            video_yt_id = yt_url.split("v=")[-1].split("&")[0]
+        elif "embed/" in yt_url:
+            video_yt_id = yt_url.split("embed/")[-1].split("?")[0]
+        updates["youtube_id"] = video_yt_id
+    
+    if updates:
+        await db.online_classes.update_one({"id": class_id}, {"$set": updates})
+    
+    return {"success": True}
 
 
 # ============ CUSTOM EXERCISES ============

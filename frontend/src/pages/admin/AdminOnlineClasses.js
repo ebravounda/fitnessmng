@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Video, Plus, Trash2, Loader2, Play, Clock, Upload, Search, Link2 } from 'lucide-react';
+import { Video, Plus, Trash2, Loader2, Play, Clock, Upload, Search, Link2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -42,6 +42,7 @@ export default function AdminOnlineClasses() {
   const [memberSearch, setMemberSearch] = useState('');
   const [sourceType, setSourceType] = useState('upload');
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [editingClass, setEditingClass] = useState(null);
   const fileRef = useRef(null);
 
   useEffect(() => { fetchClasses(); fetchMembers(); }, []);
@@ -107,6 +108,46 @@ export default function AdminOnlineClasses() {
     catch { toast.error('Error'); }
   };
 
+  const handleEdit = async () => {
+    if (!editingClass) return;
+    setUploading(true);
+    try {
+      const assignedValue = assignedTo === 'all' ? 'all' : selectedMembers.join(',');
+      await axios.put(`${API}/online-classes/${editingClass.id}`, {
+        title, description, category,
+        duration_minutes: parseInt(duration) || 0,
+        assigned_to: assignedValue,
+        ...(editingClass.source === 'youtube' ? { youtube_url: youtubeUrl } : {})
+      });
+      toast.success('Clase actualizada');
+      setShowCreate(false); setEditingClass(null);
+      fetchClasses();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Error'); }
+    finally { setUploading(false); }
+  };
+
+  const openEdit = (cls) => {
+    setEditingClass(cls);
+    setTitle(cls.title || '');
+    setDescription(cls.description || '');
+    setCategory(cls.category || 'general');
+    setDuration(cls.duration_minutes ? String(cls.duration_minutes) : '');
+    setAssignedTo(cls.assigned_to || 'all');
+    setSelectedMembers(cls.member_ids || []);
+    setSourceType(cls.source === 'youtube' ? 'youtube' : 'upload');
+    setYoutubeUrl(cls.youtube_url || '');
+    setVideoFile(null);
+    setShowCreate(true);
+  };
+
+  const openCreate = () => {
+    setEditingClass(null);
+    setTitle(''); setDescription(''); setCategory('general'); setDuration('');
+    setAssignedTo('all'); setSelectedMembers([]); setSourceType('upload');
+    setYoutubeUrl(''); setVideoFile(null);
+    setShowCreate(true);
+  };
+
   const formatSize = (bytes) => {
     if (bytes > 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
     return `${(bytes / 1024).toFixed(0)} KB`;
@@ -119,7 +160,7 @@ export default function AdminOnlineClasses() {
           <h1 className="text-2xl font-bold" style={{ fontFamily: 'Outfit' }}>Clases Online</h1>
           <p style={{ color: 'var(--text-secondary)' }} className="text-sm">{classes.length} videos subidos</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="btn-gym-primary" data-testid="add-class-btn">
+        <Button onClick={openCreate} className="btn-gym-primary" data-testid="add-class-btn">
           <Plus size={18} className="mr-2" /> Subir Video
         </Button>
       </div>
@@ -179,9 +220,14 @@ export default function AdminOnlineClasses() {
                 {cls.description && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{cls.description}</p>}
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-[10px]" style={{ color: 'var(--text-dim)' }}>{new Date(cls.created_at).toLocaleDateString('es-ES')}</span>
-                  <button onClick={() => handleDelete(cls.id)} className="text-red-500 hover:text-red-400 p-1" data-testid={`delete-class-${cls.id}`}>
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(cls)} className="text-zinc-400 hover:text-orange-400 p-1" data-testid={`edit-class-${cls.id}`}>
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => handleDelete(cls.id)} className="text-red-500 hover:text-red-400 p-1" data-testid={`delete-class-${cls.id}`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -195,7 +241,7 @@ export default function AdminOnlineClasses() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload size={20} style={{ color: '#FF6600' }} />
-              Subir Clase Online
+              {editingClass ? 'Editar Clase Online' : 'Subir Clase Online'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -255,6 +301,11 @@ export default function AdminOnlineClasses() {
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--text-secondary)' }}>Fuente del Video</label>
+              {editingClass ? (
+                <p className="text-xs px-3 py-2 rounded-xl" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>
+                  {editingClass.source === 'youtube' ? 'YouTube' : 'Video subido'} (no se puede cambiar)
+                </p>
+              ) : (
               <div className="flex gap-2">
                 <button onClick={() => setSourceType('upload')} className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
                   style={sourceType === 'upload' ? { background: 'linear-gradient(135deg, #FF6600, #E65C00)', color: '#FFF' } : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }}
@@ -267,6 +318,7 @@ export default function AdminOnlineClasses() {
                   <Link2 size={16} /> YouTube
                 </button>
               </div>
+              )}
             </div>
             {sourceType === 'youtube' ? (
               <div>
@@ -300,8 +352,8 @@ export default function AdminOnlineClasses() {
               <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files[0])} />
               </div>
             )}
-            <Button onClick={handleUpload} disabled={uploading || !title || (sourceType === 'upload' && !videoFile) || (sourceType === 'youtube' && !youtubeUrl)} className="w-full btn-gym-primary" data-testid="upload-class-btn">
-              {uploading ? <><Loader2 size={16} className="animate-spin mr-2" /> {sourceType === 'youtube' ? 'Creando...' : 'Subiendo...'}</> : <><Upload size={16} className="mr-2" /> {sourceType === 'youtube' ? 'Crear Clase' : 'Subir Clase'}</>}
+            <Button onClick={editingClass ? handleEdit : handleUpload} disabled={uploading || !title || (!editingClass && sourceType === 'upload' && !videoFile) || (!editingClass && sourceType === 'youtube' && !youtubeUrl)} className="w-full btn-gym-primary" data-testid="upload-class-btn">
+              {uploading ? <><Loader2 size={16} className="animate-spin mr-2" /> {editingClass ? 'Guardando...' : sourceType === 'youtube' ? 'Creando...' : 'Subiendo...'}</> : editingClass ? 'Guardar Cambios' : <><Upload size={16} className="mr-2" /> {sourceType === 'youtube' ? 'Crear Clase' : 'Subir Clase'}</>}
             </Button>
           </div>
         </DialogContent>

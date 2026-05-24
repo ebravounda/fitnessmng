@@ -89,3 +89,8 @@ docker restart gym24-api
 - Imágenes ejercicios: integración con free-exercise-db (800+ ejercicios con fotos)
 - Quick nav PWA: añadido "Clases Online"
 - Sidebar admin: añadido "Clases Online" con icono Video
+
+### Sesión 7 (May 2026)
+- Bot AI actualizado con documentación completa de Clases Online, Rutinas y RFID
+- System prompt ampliado con guías paso a paso para las 3 nuevas funcionalidades
+- 19 funcionalidades documentadas en el bot

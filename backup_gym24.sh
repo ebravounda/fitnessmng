@@ -1,18 +1,19 @@
 #!/bin/bash
 # ============================================
-# Gym24 - Backup Diario Automatico
+# Gym24 - Backup Automatico
 # ============================================
 # Hace backup de:
 #   - MongoDB gym24 (mongodump)
 #   - Uploads (/opt/gym24/uploads)
-# Guarda en: /opt/gym24/backups/YYYY-MM-DD/
-# Retiene: ultimos 30 dias
+#   - .env del backend
+# Guarda en: /opt/gym24/backups/YYYY-MM-DD_HHMMSS/
+# Retiene: SOLO los 2 ultimos backups (borra automaticamente los viejos)
 # ============================================
 
 BACKUP_ROOT="/opt/gym24/backups"
-DATE=$(date +%Y-%m-%d)
-BACKUP_DIR="$BACKUP_ROOT/$DATE"
-RETENTION_DAYS=30
+TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
+BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
+KEEP_BACKUPS=2  # Solo guarda los 2 ultimos
 
 mkdir -p "$BACKUP_DIR"
 
@@ -36,35 +37,45 @@ if [ -d "/opt/gym24/uploads" ]; then
     echo "    OK ($SIZE)"
 fi
 
-# 3. Backup .env (importante para JWT_SECRET, GROQ_API_KEY)
+# 3. Backup .env (importante: JWT_SECRET, GROQ_API_KEY)
 echo "  - Config (.env)..."
 if [ -f "/opt/gym24/backend/.env" ]; then
     cp /opt/gym24/backend/.env "$BACKUP_DIR/backend.env.backup"
     echo "    OK"
 fi
 
-# 4. Limpiar backups viejos (>30 dias)
-echo "  - Limpiando backups >$RETENTION_DAYS dias..."
-find "$BACKUP_ROOT" -maxdepth 1 -type d -name "20*" -mtime +$RETENTION_DAYS -exec rm -rf {} \; 2>/dev/null
+# 4. Mantener SOLO los ultimos N backups (borra los mas viejos)
+echo "  - Limpiando backups antiguos (manteniendo solo $KEEP_BACKUPS)..."
+cd "$BACKUP_ROOT"
+# Listar carpetas ordenadas por fecha (mas reciente primero), saltar las primeras $KEEP_BACKUPS, borrar resto
+ls -1dt 20*/ 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs rm -rf 2>/dev/null
 
 # 5. Resumen
 TOTAL_SIZE=$(du -sh "$BACKUP_DIR" | cut -f1)
-TOTAL_BACKUPS=$(ls -d $BACKUP_ROOT/20* 2>/dev/null | wc -l)
-echo "[$(date)] Backup completado: $BACKUP_DIR ($TOTAL_SIZE)"
-echo "Total de backups en disco: $TOTAL_BACKUPS"
+TOTAL_BACKUPS=$(ls -d $BACKUP_ROOT/20*/ 2>/dev/null | wc -l)
+TOTAL_DISK=$(du -sh "$BACKUP_ROOT" 2>/dev/null | cut -f1)
+
+echo ""
+echo "[$(date)] Backup completado"
+echo "  Nuevo backup:  $BACKUP_DIR ($TOTAL_SIZE)"
+echo "  Total backups: $TOTAL_BACKUPS (limite: $KEEP_BACKUPS)"
+echo "  Espacio total: $TOTAL_DISK"
+echo ""
+echo "Backups disponibles:"
+ls -1dt $BACKUP_ROOT/20*/ 2>/dev/null
 
 # ============================================
 # RESTAURAR (referencia):
 #
 # MongoDB:
-#   cat /opt/gym24/backups/YYYY-MM-DD/mongo-gym24.archive | \
+#   cat /opt/gym24/backups/<carpeta>/mongo-gym24.archive | \
 #     docker exec -i mongo-gym24 mongorestore --archive --drop
 #
 # Uploads:
-#   tar -xzf /opt/gym24/backups/YYYY-MM-DD/uploads.tar.gz -C /opt/gym24/
+#   tar -xzf /opt/gym24/backups/<carpeta>/uploads.tar.gz -C /opt/gym24/
 #
 # Config:
-#   cp /opt/gym24/backups/YYYY-MM-DD/backend.env.backup /opt/gym24/backend/.env
-#   docker stop gym24-api && docker rm gym24-api
-#   # ...recrear contenedor con docker run
+#   cp /opt/gym24/backups/<carpeta>/backend.env.backup /opt/gym24/backend/.env
+#   # Luego: docker stop gym24-api && docker rm gym24-api
+#   # Y recrear con docker run
 # ============================================

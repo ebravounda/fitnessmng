@@ -1,96 +1,99 @@
 # Gym24 - PRD
 
 ## Problema Original
-Clonar sistema IngresoQR (SaaS multi-tenant de control de acceso para gimnasios) al dominio gym24.app con rediseño visual completo para que no se parezca al original.
+Clonar sistema IngresoQR (SaaS multi-tenant de control de acceso para gimnasios) al dominio gym24.app con rediseño visual completo. Debe ser TOTALMENTE INDEPENDIENTE de IngresoQR (BD, uploads, red Docker, todo aislado).
 
-## Arquitectura
-- **Backend**: FastAPI + MongoDB (Docker en Plesk, puerto 8003)
-- **Frontend**: React + Tailwind (build estático en Plesk httpdocs)
-- **Producción**: api.gym24.app (backend), gym24.app (frontend)
-- **MongoDB**: Contenedor separado mongo-gym24 (puerto 27019)
-- **Servidor**: Mismo servidor que ingresoqr.com (Plesk)
+## Arquitectura Producción (Plesk VPS)
+- **Backend**: FastAPI + Docker (`gym24-api`, puerto 8003→8001)
+- **Frontend**: React build → `/var/www/vhosts/gym24.app/httpdocs/`
+- **MongoDB**: Contenedor `mongo-gym24` (127.0.0.1:27019→27017)
+- **Red Docker**: `gym24-net` (compartida solo entre `gym24-api` y `mongo-gym24`)
+- **Uploads**: `/opt/gym24/uploads` (bind mount, AISLADO de IngresoQR)
+- **Videos**: `/opt/gym24/videos` (bind mount)
+- **Dominios**: gym24.app (frontend) + api.gym24.app (backend)
+
+## ⚠️ REGLA CRÍTICA
+**NUNCA tocar nada de IngresoQR**:
+- Contenedor `mongo` (puerto 27017) → IngresoQR
+- Contenedor `mongo-tramilex` (puerto 27018) → Tramilex
+- Carpeta `/opt/gymaccess/uploads/` → uploads de IngresoQR
+- BD `gymaccess` → IngresoQR
+
+## .env del Backend (Producción)
+```
+MONGO_URL=mongodb://mongo-gym24:27017
+DB_NAME=gym24
+JWT_SECRET=<cambiar por openssl rand -hex 32>
+QR_SECRET=<cambiar por openssl rand -hex 32>
+CORS_ORIGINS=https://gym24.app,https://www.gym24.app
+UPLOAD_DIR=/opt/gym24/uploads
+GROQ_API_KEY=<key del usuario>
+```
 
 ## Credenciales
 - Super Admin: info@gym24.es / admin123
+- Otros admins: fitnessmanager@gym24.es, demo@mixedsportcenter.es, demo@saladearmas.es, demo@boxakyles.com
 
-## Deploy
+## Deploy Comando
 ```bash
 cd /opt/gym24/repo && git pull origin main
-cp -r frontend/build/* /var/www/vhosts/gym24.app/httpdocs/
-docker restart gym24-api
+bash /opt/gym24/repo/actualizar_gym24.sh
+```
+
+## Comando para recrear contenedor (si se rompe)
+```bash
+docker stop gym24-api && docker rm gym24-api
+docker run -d \
+  --name gym24-api \
+  --restart always \
+  --network gym24-net \
+  -p 8003:8001 \
+  --env-file /opt/gym24/backend/.env \
+  -v /opt/gym24/uploads:/opt/gym24/uploads \
+  -v /opt/gym24/videos:/app/videos \
+  gym24-api
 ```
 
 ## Features Completadas
 
-### Sesión 1 (Abr 2026)
-- Clonado repo iqa completo al workspace
-- Cambio de admin email a info@gym24.es
-- Deploy Docker en Plesk (gym24-api puerto 8003, mongo-gym24 puerto 27019)
-- Configuración nginx proxy para api.gym24.app
-- Rediseño colores: #E1FF01 (verde lima) → #FF6600 (naranja)
-- Renombrado IngresoQR → Gym24 en todo el frontend
-- Nuevo favicon/logos PWA con logo F24
-- Fuentes: Outfit (headings) + DM Sans (body) — distintas a IngresoQR
-- Landing page: diseño con gradientes radiales, grid pattern, logo prominente
-- Admin Login: layout split-screen (izquierda decorativa, derecha formulario)
-- PWA Login: indicadores de código con dots, background effects
-- Nuevo tipo de negocio: Piscina (usuarios, abonos, tarifas, socorristas, taquilla, aforo)
-- Eliminado modelo Coworking
-- Eliminada sección "Despliegue Backend" de Configuración
-- Monitor RPi simplificado: solo IP pública, IP local, estado online/offline
-- Nuevos estilos CSS: stat-cards con gradientes, botones con sombra naranja, badges con bordes
+### Sesiones 1-7 (Abr-May 2026)
+- Clonado, deploy Docker, nginx proxy api.gym24.app
+- Rediseño completo: dark + orange (#FF6600), tipografía Outfit + DM Sans
+- Renombrado IngresoQR → Gym24, favicon/logos PWA
+- Landing, Admin Login, PWA Login rediseñados
+- Tipo negocio Piscina añadido, Coworking eliminado
+- Módulo video accesos (4s grabación entrada, cron limpieza 30d)
+- Mapa corporal SVG interactivo (15 zonas, 50+ ejercicios)
+- Clases Online (admin upload + YouTube, PWA viewer)
+- RFID Live Capture (modal con auto-focus)
+- Bot AI Groq con system prompt completo (Clases, Rutinas, RFID)
+- Manual Super Admin PDF
+- Landing redesign con AI hero image
+
+### Sesión 8 (May 25, 2026) — Deploy Producción
+- **Bug crítico FIX**: Frontend hardcoded URL preview Emergent
+  - `craco.config.js` carga `.env.production` primero cuando `NODE_ENV=production`
+  - Creado `.env.production` con `REACT_APP_BACKEND_URL=https://api.gym24.app`
+  - `actualizar_gym24.sh` ahora rebuild en servidor con URL correcta
+- **Bug crítico FIX**: MongoDB connection
+  - Backend apuntaba a `172.17.0.1:27017` (vacío) → cambió a `mongo-gym24:27017` vía red Docker `gym24-net`
+- **Bug crítico FIX**: Uploads aislados
+  - Antes: `/opt/gymaccess/uploads` (compartido con IngresoQR, archivos perdidos al rebuild)
+  - Ahora: `/opt/gym24/uploads` con bind mount + `UPLOAD_DIR` en .env
 
 ## Backlog
 
-### P0 - En progreso
-- Acabar rediseño PWA Home (QR + stats inspirados en Fitness 24 Manager)
-- Rediseñar dashboard cards admin
+### P0 (próxima sesión)
+- Ejecutar testing_agent_v3_fork para validar E2E backend + frontend
+- Re-subir logos de gyms (FitnessManager, MIXED Sport Center, Sala de Armas)
+- Re-subir fotos del TPV
 
 ### P1
-- Tarifa de acceso diario para piscinas
-- PWA bottom nav con iconos naranja estilizados
+- Rotar JWT_SECRET y QR_SECRET con `openssl rand -hex 32`
+- Resolver error `ResizeObserver` estructuralmente (actualmente CSS hack)
+- Reemplazar URLs hotlinked de ExerciseDB por assets locales
 
 ### P2
 - Logo dinámico en sidebar admin
-- Modo kiosko para piscinas (venta de accesos diarios desde tablet)
-
-### Sesión 2 (Abr 2026)
-- Rediseño completo PWA Home: Card QR estilo Fitness 24 Manager, quick nav con iconos naranja
-- PWA Bottom Nav: indicador naranja activo (línea + fondo), iconos naranja
-- PWA Login: dots indicadores, botón que se activa al completar código
-- Dashboard Admin: cards con iconos con bordes de color, tipografía Outfit
-- PWA Layout: header minimalizado
-- Tipo negocio "Piscina" añadido, "Coworking" eliminado
-- "Despliegue Backend" eliminado de Settings
-- Monitor RPi simplificado (IP pública, IP local, estado)
-
-### Sesión 3 (Abr 2026)
-- Módulo de video en accesos implementado
-- Backend: upload/stream/list/cleanup endpoints para videos de 4s
-- Cron automático: borra videos >30 días a medianoche
-- Frontend: botón "Video" en historial accesos + modal reproductor
-- Frontend: opción "Videos de Acceso" en menú de cada socio
-- Script Raspberry Pi actualizado con grabación ffmpeg en entradas
-- Solo graba en ENTRADAS, no salidas
-- Storage: /opt/gym24/videos en Plesk (~7.5GB max con 500 socios)
-
-### Sesión 5 (May 2026)
-- Mapa corporal SVG interactivo (frontal + posterior) con 15 zonas musculares
-- ~50 ejercicios en español con máquinas, series, reps, descripción
-- Vista frontal: pecho, hombros, bíceps, antebrazos, abdomen, cuádriceps, tibiales
-- Vista posterior: trapecios, dorsales, espalda media, tríceps, lumbares, glúteos, isquiotibiales, gemelos
-- Cards expandibles con animaciones framer-motion
-- Botones rápidos de zona debajo del mapa corporal
-
-### Sesión 6 (May 2026)
-- RFID Live Capture: modal con grabación en vivo, input auto-focus, captura automática del UID
-- Clases Online: admin sube videos, socios los ven en PWA (Netflix fitness)
-- Backend: /api/classes/online (CRUD + stream), /api/exercises/custom (CRUD)
-- Imágenes ejercicios: integración con free-exercise-db (800+ ejercicios con fotos)
-- Quick nav PWA: añadido "Clases Online"
-- Sidebar admin: añadido "Clases Online" con icono Video
-
-### Sesión 7 (May 2026)
-- Bot AI actualizado con documentación completa de Clases Online, Rutinas y RFID
-- System prompt ampliado con guías paso a paso para las 3 nuevas funcionalidades
-- 19 funcionalidades documentadas en el bot
+- Modo kiosko para piscinas
+- Refactor cron jobs (mover fuera del event loop principal)

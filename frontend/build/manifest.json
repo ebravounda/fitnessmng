@@ -1,7 +1,8 @@
 {
+  "id": "/app",
   "short_name": "Gym24",
   "name": "Gym24 - Control de Acceso",
-  "description": "Gym24 - Sistema de control de acceso para gimnasios",
+  "description": "Gym24 - Sistema de control de acceso para gimnasios. Acceso QR, rutinas personalizadas, clases online y mucho mas.",
   "icons": [
     {
       "src": "logo192.png",
@@ -30,20 +31,94 @@
   ],
   "start_url": "/app",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "theme_color": "#09090B",
   "background_color": "#09090B",
   "orientation": "portrait",
   "scope": "/",
   "lang": "es",
   "dir": "ltr",
-  "categories": ["fitness", "health", "utilities"],
+  "categories": ["fitness", "health", "lifestyle"],
+  "prefer_related_applications": false,
   "screenshots": [
     {
-      "src": "logo512.png",
-      "sizes": "512x512",
+      "src": "play_screenshots/02_01_home_qr_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Pantalla principal con codigo QR"
+    },
+    {
+      "src": "play_screenshots/01_00_login_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Inicio de sesion"
+    },
+    {
+      "src": "play_screenshots/03_02_classes_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Clases del gimnasio"
+    },
+    {
+      "src": "play_screenshots/04_03_history_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Historial de accesos"
+    },
+    {
+      "src": "play_screenshots/05_05_membership_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mi membresia"
+    },
+    {
+      "src": "play_screenshots/06_06_notifications_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Notificaciones"
+    },
+    {
+      "src": "play_screenshots/07_07_profile_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Perfil del usuario"
+    },
+    {
+      "src": "play_screenshots/08_08_achievements_framed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Logros y gamificacion"
+    },
+    {
+      "src": "play_screenshots/feature_graphic_1024x500.png",
+      "sizes": "1024x500",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Gym24"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mi QR",
+      "short_name": "QR",
+      "description": "Mostrar mi codigo QR de acceso",
+      "url": "/app/home",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clases",
+      "short_name": "Clases",
+      "description": "Ver clases disponibles",
+      "url": "/app/classes",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
     }
   ]
 }

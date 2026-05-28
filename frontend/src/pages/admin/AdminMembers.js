@@ -54,6 +54,21 @@ function MemberContactPopover({ member, onClose }) {
             <button onClick={() => copyToClipboard(member.phone, 'Telefono')} style={{ color: 'var(--text-muted)' }} className="hover:text-white"><Copy size={12} /></button>
           </div>
         )}
+        {member.document_id && (
+          <div className="flex items-center gap-2">
+            <span style={{ color: 'var(--text-muted)' }} className="w-20 shrink-0">DNI/NIE:</span>
+            <span>{member.document_id}</span>
+            <button onClick={() => copyToClipboard(member.document_id, 'DNI/NIE')} style={{ color: 'var(--text-muted)' }} className="hover:text-white"><Copy size={12} /></button>
+          </div>
+        )}
+        {(member.address || member.city || member.postal_code) && (
+          <div className="flex items-start gap-2">
+            <span style={{ color: 'var(--text-muted)' }} className="w-20 shrink-0">Direccion:</span>
+            <span className="break-words">
+              {[member.address, member.postal_code, member.city].filter(Boolean).join(', ')}
+            </span>
+          </div>
+        )}
         {member.membership_plan_name && (
           <div className="flex items-center gap-2">
             <span style={{ color: 'var(--text-muted)' }} className="w-20 shrink-0">Plan:</span>
@@ -93,8 +108,9 @@ export default function AdminMembers() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [suspendReason, setSuspendReason] = useState('');
-  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', gym_id: admin?.gym_id || '', gender: 'prefer_not_to_say' });
-  const [editData, setEditData] = useState({ name: '', email: '', phone: '', can_bring_guests: false, max_guests_per_month: 2, guest_valid_days: 1 });
+  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', gym_id: admin?.gym_id || '', gender: 'prefer_not_to_say', document_id: '', address: '', city: '', postal_code: '' });
+  const [editData, setEditData] = useState({ name: '', email: '', phone: '', can_bring_guests: false, max_guests_per_month: 2, guest_valid_days: 1, document_id: '', address: '', city: '', postal_code: '' });
+  const [memberFormResponses, setMemberFormResponses] = useState([]);
   const [expandedContact, setExpandedContact] = useState(null);
   const [showDevicesModal, setShowDevicesModal] = useState(false);
   const [showEmailsModal, setShowEmailsModal] = useState(false);
@@ -180,15 +196,38 @@ export default function AdminMembers() {
       await createMember({ ...newMember, gym_id: gymId });
       toast.success('Socio creado exitosamente');
       setShowCreateModal(false);
-      setNewMember({ name: '', email: '', phone: '', gym_id: '' });
+      setNewMember({ name: '', email: '', phone: '', gym_id: '', gender: 'prefer_not_to_say', document_id: '', address: '', city: '', postal_code: '' });
       fetchMembers();
     } catch (error) { toast.error(error.response?.data?.detail || 'Error al crear socio'); }
   };
 
-  const handleOpenEdit = (member) => {
+  const handleOpenEdit = async (member) => {
     setSelectedMember(member);
-    setEditData({ name: member.name, email: member.email || '', phone: member.phone || '', can_bring_guests: member.can_bring_guests || false, max_guests_per_month: member.max_guests_per_month || 2, guest_valid_days: member.guest_valid_days || 1 });
+    setEditData({
+      name: member.name,
+      email: member.email || '',
+      phone: member.phone || '',
+      can_bring_guests: member.can_bring_guests || false,
+      max_guests_per_month: member.max_guests_per_month || 2,
+      guest_valid_days: member.guest_valid_days || 1,
+      document_id: member.document_id || '',
+      address: member.address || '',
+      city: member.city || '',
+      postal_code: member.postal_code || ''
+    });
+    setMemberFormResponses([]);
     setShowEditModal(true);
+    // Load custom form responses
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/members/${member.id}/form-responses`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMemberFormResponses(data || []);
+      }
+    } catch (e) { /* silent */ }
   };
 
   const handleUpdateMember = async () => {
@@ -503,6 +542,33 @@ export default function AdminMembers() {
                     <option value="prefer_not_to_say">Prefiero no contestar</option>
                   </select>
                 </div>
+                <div className="border-t border-zinc-800 pt-4">
+                  <p className="text-xs text-zinc-500 mb-3 uppercase tracking-wider">Datos personales</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-zinc-400 mb-1 block">DNI / NIE / Pasaporte</label>
+                      <Input value={newMember.document_id} onChange={(e) => setNewMember({ ...newMember, document_id: e.target.value })}
+                        placeholder="12345678A" className="input-dark" data-testid="member-document-input" />
+                    </div>
+                    <div>
+                      <label className="text-sm text-zinc-400 mb-1 block">Direccion</label>
+                      <Input value={newMember.address} onChange={(e) => setNewMember({ ...newMember, address: e.target.value })}
+                        placeholder="Calle, numero, piso..." className="input-dark" data-testid="member-address-input" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm text-zinc-400 mb-1 block">Ciudad</label>
+                        <Input value={newMember.city} onChange={(e) => setNewMember({ ...newMember, city: e.target.value })}
+                          placeholder="Madrid" className="input-dark" data-testid="member-city-input" />
+                      </div>
+                      <div>
+                        <label className="text-sm text-zinc-400 mb-1 block">Codigo Postal</label>
+                        <Input value={newMember.postal_code} onChange={(e) => setNewMember({ ...newMember, postal_code: e.target.value })}
+                          placeholder="28001" className="input-dark" data-testid="member-postal-input" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <Button onClick={handleCreateMember} className="w-full btn-gym-primary" data-testid="save-member-btn">
                   <UserPlus size={20} className="mr-2" /> Crear Socio
                 </Button>
@@ -752,7 +818,7 @@ export default function AdminMembers() {
 
       {/* Edit Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Socio</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
@@ -770,6 +836,36 @@ export default function AdminMembers() {
               <Input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
                 className="input-dark" />
             </div>
+
+            {/* Datos personales */}
+            <div className="border-t border-zinc-800 pt-4">
+              <p className="text-xs text-orange-500 mb-3 uppercase tracking-wider font-semibold">Datos personales</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm text-zinc-400 mb-1 block">DNI / NIE / Pasaporte</label>
+                  <Input value={editData.document_id} onChange={(e) => setEditData({ ...editData, document_id: e.target.value })}
+                    placeholder="12345678A" className="input-dark" data-testid="edit-member-document" />
+                </div>
+                <div>
+                  <label className="text-sm text-zinc-400 mb-1 block">Direccion</label>
+                  <Input value={editData.address} onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                    placeholder="Calle, numero, piso..." className="input-dark" data-testid="edit-member-address" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm text-zinc-400 mb-1 block">Ciudad</label>
+                    <Input value={editData.city} onChange={(e) => setEditData({ ...editData, city: e.target.value })}
+                      placeholder="Madrid" className="input-dark" data-testid="edit-member-city" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-zinc-400 mb-1 block">Codigo Postal</label>
+                    <Input value={editData.postal_code} onChange={(e) => setEditData({ ...editData, postal_code: e.target.value })}
+                      placeholder="28001" className="input-dark" data-testid="edit-member-postal" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Guest Config */}
             <div className="border-t border-zinc-800 pt-4">
               <label className="flex items-center gap-3 cursor-pointer">
@@ -789,6 +885,40 @@ export default function AdminMembers() {
                 </div>
               )}
             </div>
+
+            {/* Respuestas de formularios personalizados */}
+            {memberFormResponses && memberFormResponses.length > 0 && (
+              <div className="border-t border-zinc-800 pt-4">
+                <p className="text-xs text-orange-500 mb-3 uppercase tracking-wider font-semibold">
+                  Respuestas a formularios ({memberFormResponses.length})
+                </p>
+                <div className="space-y-3" data-testid="member-form-responses">
+                  {memberFormResponses.map((fr) => (
+                    <details key={fr.id} className="bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden">
+                      <summary className="px-3 py-2 cursor-pointer text-sm font-medium hover:bg-zinc-900 flex items-center justify-between">
+                        <span className="text-zinc-200">{fr.form_title || 'Formulario'}</span>
+                        <span className="text-xs text-zinc-500">
+                          {fr.created_at ? new Date(fr.created_at).toLocaleDateString('es-ES') : ''}
+                        </span>
+                      </summary>
+                      <div className="px-3 py-3 border-t border-zinc-800 space-y-2">
+                        {fr.responses && Object.keys(fr.responses).length > 0 ? (
+                          Object.entries(fr.responses).map(([key, value]) => (
+                            <div key={key} className="text-sm">
+                              <div className="text-xs text-zinc-500">{key}</div>
+                              <div className="text-zinc-200 break-words">{Array.isArray(value) ? value.join(', ') : (value || '-')}</div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-zinc-500 italic">Sin respuestas</p>
+                        )}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Button onClick={handleUpdateMember} className="w-full btn-gym-primary" data-testid="update-member-btn">
               <Pencil size={20} className="mr-2" /> Guardar Cambios
             </Button>

@@ -87,4 +87,11 @@ async def get_form_responses(form_id: str, admin: dict = Depends(get_current_adm
 @router.get("/members/{member_id}/form-responses")
 async def get_member_form_responses(member_id: str, admin: dict = Depends(get_current_admin)):
     responses = await db.form_responses.find({"member_id": member_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    # Enrich with form title
+    form_ids = list({r.get("form_id") for r in responses if r.get("form_id")})
+    if form_ids:
+        forms = await db.custom_forms.find({"id": {"$in": form_ids}}, {"_id": 0, "id": 1, "title": 1}).to_list(100)
+        title_map = {f["id"]: f.get("title", "") for f in forms}
+        for r in responses:
+            r["form_title"] = title_map.get(r.get("form_id"), "Formulario")
     return responses

@@ -32,7 +32,7 @@ async def send_gym_email(gym_id: str, to_email: str, subject: str, html_body: st
     if not smtp_host or not smtp_user or not smtp_password:
         raise HTTPException(status_code=400, detail="SMTP no configurado para este gimnasio")
     msg = MIMEMultipart("alternative")
-    msg["From"] = f"{gym.get('name', 'IngresoQR')} <{smtp_from}>"
+    msg["From"] = f"{gym.get('name', 'Gym24')} <{smtp_from}>"
     msg["To"] = to_email
     msg["Subject"] = subject
     msg.attach(MIMEText(html_body, "html"))
@@ -222,6 +222,10 @@ async def kiosk_register(member: MemberPublicRegister):
         "id": str(uuid.uuid4()), "email": member.email, "name": member.name,
         "phone": member.phone, "gym_id": member.gym_id,
         "code": generate_member_code(), "status": "pending",
+        "document_id": member.document_id,
+        "address": member.address,
+        "city": member.city,
+        "postal_code": member.postal_code,
         "registered_via": "kiosk", "created_at": datetime.now(timezone.utc).isoformat()
     }
     # Auto-approve if gym has it enabled

@@ -61,6 +61,10 @@ class MemberCreate(BaseModel):
     avatar_url: Optional[str] = None
     gym_id: str
     gender: Optional[str] = None  # male, female, prefer_not_to_say
+    document_id: Optional[str] = None  # DNI/NIE/Pasaporte
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
 
 class MemberPublicRegister(BaseModel):
     email: EmailStr
@@ -70,6 +74,10 @@ class MemberPublicRegister(BaseModel):
     plan_id: Optional[str] = None
     gender: Optional[str] = None  # male, female, prefer_not_to_say
     form_responses: Optional[dict] = None  # Custom form answers
+    document_id: str  # DNI/NIE/Pasaporte (OBLIGATORIO en registro publico)
+    address: str  # Direccion (OBLIGATORIO)
+    city: str  # Ciudad (OBLIGATORIO)
+    postal_code: str  # Codigo Postal (OBLIGATORIO)
 
 class MemberUpdate(BaseModel):
     name: Optional[str] = None
@@ -81,6 +89,10 @@ class MemberUpdate(BaseModel):
     max_guests_per_month: Optional[int] = None
     suspension_reason: Optional[str] = None
     gender: Optional[str] = None
+    document_id: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
 
 class PlanCreate(BaseModel):
     gym_id: str

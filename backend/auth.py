@@ -20,8 +20,11 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
-def create_jwt_token(data: dict) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+def create_jwt_token(data: dict, remember: bool = False) -> str:
+    # remember=True: 30 dias (PWA member con "Recordar")
+    # remember=False: 24 horas (default admin y member sin "Recordar")
+    hours = 24 * 30 if remember else JWT_EXPIRATION_HOURS
+    expire = datetime.now(timezone.utc) + timedelta(hours=hours)
     to_encode = data.copy()
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)

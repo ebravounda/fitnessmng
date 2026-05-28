@@ -164,9 +164,9 @@ export const AuthProvider = ({ children }) => {
     return fp;
   };
 
-  const loginMember = async (code) => {
+  const loginMember = async (code, remember = false) => {
     const fp = getDeviceFingerprint();
-    const response = await axios.post(`${API}/auth/member/login?code=${code}&device_fingerprint=${fp}`);
+    const response = await axios.post(`${API}/auth/member/login?code=${code}&device_fingerprint=${fp}&remember=${remember}`);
     const { member: memberData, gym: gymData, membership: membershipData, token: newToken } = response.data;
     
     localStorage.setItem('token', newToken);

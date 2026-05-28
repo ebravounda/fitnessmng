@@ -19,7 +19,11 @@ export default function KioskPage() {
     name: '',
     email: '',
     phone: '',
-    plan_id: ''
+    plan_id: '',
+    document_id: '',
+    address: '',
+    city: '',
+    postal_code: ''
   });
 
   useEffect(() => { fetchGymInfo(); }, [gymId]);
@@ -56,6 +60,10 @@ export default function KioskPage() {
       toast.error('Nombre y email son requeridos');
       return;
     }
+    if (!formData.document_id || !formData.address || !formData.city || !formData.postal_code) {
+      toast.error('DNI/NIE/Pasaporte, direccion, ciudad y codigo postal son obligatorios');
+      return;
+    }
     setSubmitting(true);
     try {
       const response = await axios.post(`${API}/kiosk/register`, {
@@ -63,7 +71,11 @@ export default function KioskPage() {
         email: formData.email,
         phone: formData.phone || null,
         gym_id: gymId,
-        plan_id: formData.plan_id || null
+        plan_id: formData.plan_id || null,
+        document_id: formData.document_id,
+        address: formData.address,
+        city: formData.city,
+        postal_code: formData.postal_code
       });
       setSuccess(response.data);
     } catch (error) {
@@ -75,7 +87,7 @@ export default function KioskPage() {
 
   const resetForm = () => {
     setSuccess(null);
-    setFormData({ name: '', email: '', phone: '', plan_id: '' });
+    setFormData({ name: '', email: '', phone: '', plan_id: '', document_id: '', address: '', city: '', postal_code: '' });
   };
 
   if (loading) {
@@ -191,6 +203,55 @@ export default function KioskPage() {
                 className="input-dark text-lg py-4"
                 data-testid="kiosk-phone-input"
               />
+            </div>
+
+            <div>
+              <label className="block text-base font-medium text-zinc-300 mb-2">DNI / NIE / Pasaporte *</label>
+              <Input
+                value={formData.document_id}
+                onChange={(e) => setFormData({ ...formData, document_id: e.target.value })}
+                placeholder="12345678A"
+                className="input-dark text-lg py-4"
+                data-testid="kiosk-document-input"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-base font-medium text-zinc-300 mb-2">Direccion *</label>
+              <Input
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Calle, numero, piso..."
+                className="input-dark text-lg py-4"
+                data-testid="kiosk-address-input"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-base font-medium text-zinc-300 mb-2">Ciudad *</label>
+                <Input
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Madrid"
+                  className="input-dark text-lg py-4"
+                  data-testid="kiosk-city-input"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-base font-medium text-zinc-300 mb-2">Codigo Postal *</label>
+                <Input
+                  value={formData.postal_code}
+                  onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                  placeholder="28001"
+                  className="input-dark text-lg py-4"
+                  data-testid="kiosk-postal-input"
+                  required
+                />
+              </div>
             </div>
 
             {plans.length > 0 && (

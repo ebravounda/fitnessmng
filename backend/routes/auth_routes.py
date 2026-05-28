@@ -82,7 +82,7 @@ async def impersonate_gym(gym_id: str, credentials: HTTPAuthorizationCredentials
     return {"admin": admin_data, "token": impersonation_token, "gym": gym}
 
 @router.post("/auth/member/login")
-async def login_member(code: str, request: Request, device_fingerprint: str = None):
+async def login_member(code: str, request: Request, device_fingerprint: str = None, remember: bool = False):
     ip = await get_client_ip(request)
     user_agent = request.headers.get("user-agent", "")
     if await is_ip_blocked(ip):
@@ -127,7 +127,7 @@ async def login_member(code: str, request: Request, device_fingerprint: str = No
     # Convert avatar_path to avatar_url if needed
     if member.get("avatar_path") and not member.get("avatar_url"):
         member["avatar_url"] = f"/api/files/{member['avatar_path']}"
-    token = create_jwt_token({"sub": member["id"], "role": "member", "gym_id": member["gym_id"]})
+    token = create_jwt_token({"sub": member["id"], "role": "member", "gym_id": member["gym_id"]}, remember=remember)
     if gym:
         gym.setdefault("business_type", "gym")
     return {"member": member, "gym": gym, "membership": membership, "token": token}

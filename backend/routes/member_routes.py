@@ -10,9 +10,78 @@ from database import db
 from auth import get_current_admin, create_jwt_token, check_role, check_permission
 from models import MemberCreate, MemberPublicRegister, MemberUpdate
 from qr_utils import generate_member_code
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
+
+
+class MemberCodeRecovery(BaseModel):
+    document_id: str
+    gym_id: Optional[str] = None
+
+
+@router.post("/members/recover-code")
+async def recover_member_code(data: MemberCodeRecovery):
+    """Recupera el codigo de socio enviandolo por email a partir del DNI/NIE/Pasaporte"""
+    # Buscar socio por document_id (case-insensitive, ignorar espacios)
+    doc_clean = data.document_id.strip().upper()
+    if not doc_clean:
+        raise HTTPException(status_code=400, detail="Documento requerido")
+
+    query = {"document_id": {"$regex": f"^{doc_clean}$", "$options": "i"}}
+    if data.gym_id:
+        query["gym_id"] = data.gym_id
+
+    member = await db.members.find_one(query, {"_id": 0})
+    # Respuesta generica por seguridad (no revelar si existe o no)
+    generic_msg = "Si el documento esta registrado, recibiras un email con tu numero de socio en breve."
+
+    if not member:
+        return {"message": generic_msg, "sent": False}
+
+    if not member.get("email"):
+        return {"message": generic_msg, "sent": False}
+
+    # Importar funcion de envio
+    from routes.misc_routes import send_gym_email
+    gym = await db.gyms.find_one({"id": member["gym_id"]}, {"_id": 0})
+    gym_name = gym.get("name", "Gym24") if gym else "Gym24"
+
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; background: #0a0a0a; color: #fff; padding: 30px; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #FF6600; margin-bottom: 20px;">Recuperacion de Numero de Socio</h2>
+        <p>Hola <strong>{member.get('name', '')}</strong>,</p>
+        <p>Recibimos una solicitud para recuperar tu numero de socio en <strong>{gym_name}</strong>.</p>
+        <div style="background: #1a1a1a; border: 2px solid #FF6600; padding: 25px; border-radius: 12px; text-align: center; margin: 30px 0;">
+            <p style="margin: 0 0 10px 0; color: #999; font-size: 14px;">TU NUMERO DE SOCIO ES:</p>
+            <p style="font-size: 42px; font-weight: bold; color: #FF6600; margin: 0; letter-spacing: 4px; font-family: monospace;">{member.get('code', '')}</p>
+        </div>
+        <p style="color: #ccc; font-size: 14px;">Usa este codigo para acceder a tu cuenta en la app.</p>
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">Si no realizaste esta solicitud, puedes ignorar este mensaje.</p>
+        <hr style="border: 0; border-top: 1px solid #333; margin: 30px 0;">
+        <p style="color: #666; font-size: 11px; text-align: center;">Gym24 - {gym_name}</p>
+    </div>
+    """
+
+    try:
+        await send_gym_email(
+            gym_id=member["gym_id"],
+            to_email=member["email"],
+            subject=f"Tu numero de socio en {gym_name}",
+            html_body=html_body,
+            member_id=member.get("id"),
+            email_type="code_recovery"
+        )
+        return {"message": generic_msg, "sent": True}
+    except HTTPException as e:
+        # SMTP no configurado: devolver mensaje generico igualmente
+        logger.warning(f"SMTP not configured for code recovery: {e.detail}")
+        return {"message": generic_msg, "sent": False}
+    except Exception as e:
+        logger.error(f"Code recovery email error: {e}")
+        return {"message": generic_msg, "sent": False}
+
 
 @router.post("/members")
 async def create_member(member: MemberCreate, admin: dict = Depends(get_current_admin)):
@@ -56,6 +125,10 @@ async def register_member_public(member: MemberPublicRegister):
         "status": initial_status,
         "gender": member.gender or "prefer_not_to_say",
         "form_responses": member.form_responses,
+        "document_id": member.document_id,
+        "address": member.address,
+        "city": member.city,
+        "postal_code": member.postal_code,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     while await db.members.find_one({"code": member_dict["code"]}):
@@ -511,7 +584,7 @@ async def export_members_excel(
         bottom=Side(style='thin', color='CCCCCC')
     )
     
-    headers = ["Nombre", "Numero de Socio", "Telefono", "Email", "Estado", "Fecha Registro"]
+    headers = ["Nombre", "Numero de Socio", "DNI/NIE/Pasaporte", "Telefono", "Email", "Direccion", "Ciudad", "Codigo Postal", "Estado", "Fecha Registro"]
     if include_memberships:
         headers += ["Plan Activo", "Inicio Plan", "Fin Plan", "Precio Plan"]
     
@@ -527,30 +600,38 @@ async def export_members_excel(
     for row, member in enumerate(members, 2):
         ws.cell(row=row, column=1, value=member.get("name", "")).border = thin_border
         ws.cell(row=row, column=2, value=member.get("code", "")).border = thin_border
-        ws.cell(row=row, column=3, value=member.get("phone", "")).border = thin_border
-        ws.cell(row=row, column=4, value=member.get("email", "")).border = thin_border
-        ws.cell(row=row, column=5, value=status_map.get(member.get("status", ""), member.get("status", ""))).border = thin_border
+        ws.cell(row=row, column=3, value=member.get("document_id", "")).border = thin_border
+        ws.cell(row=row, column=4, value=member.get("phone", "")).border = thin_border
+        ws.cell(row=row, column=5, value=member.get("email", "")).border = thin_border
+        ws.cell(row=row, column=6, value=member.get("address", "")).border = thin_border
+        ws.cell(row=row, column=7, value=member.get("city", "")).border = thin_border
+        ws.cell(row=row, column=8, value=member.get("postal_code", "")).border = thin_border
+        ws.cell(row=row, column=9, value=status_map.get(member.get("status", ""), member.get("status", ""))).border = thin_border
         created = member.get("created_at", "")
-        ws.cell(row=row, column=6, value=created[:10] if created else "").border = thin_border
+        ws.cell(row=row, column=10, value=created[:10] if created else "").border = thin_border
         
         if include_memberships:
             ms = membership_map.get(member["id"], {})
-            ws.cell(row=row, column=7, value=ms.get("plan_name", "-")).border = thin_border
-            ws.cell(row=row, column=8, value=ms.get("start_date", "-")).border = thin_border
-            ws.cell(row=row, column=9, value=ms.get("end_date", "-")).border = thin_border
-            ws.cell(row=row, column=10, value=ms.get("price", "")).border = thin_border
+            ws.cell(row=row, column=11, value=ms.get("plan_name", "-")).border = thin_border
+            ws.cell(row=row, column=12, value=ms.get("start_date", "-")).border = thin_border
+            ws.cell(row=row, column=13, value=ms.get("end_date", "-")).border = thin_border
+            ws.cell(row=row, column=14, value=ms.get("price", "")).border = thin_border
     
     ws.column_dimensions['A'].width = 30
     ws.column_dimensions['B'].width = 18
-    ws.column_dimensions['C'].width = 20
-    ws.column_dimensions['D'].width = 35
-    ws.column_dimensions['E'].width = 14
-    ws.column_dimensions['F'].width = 16
+    ws.column_dimensions['C'].width = 18
+    ws.column_dimensions['D'].width = 18
+    ws.column_dimensions['E'].width = 32
+    ws.column_dimensions['F'].width = 35
+    ws.column_dimensions['G'].width = 18
+    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['I'].width = 14
+    ws.column_dimensions['J'].width = 16
     if include_memberships:
-        ws.column_dimensions['G'].width = 22
-        ws.column_dimensions['H'].width = 14
-        ws.column_dimensions['I'].width = 14
-        ws.column_dimensions['J'].width = 14
+        ws.column_dimensions['K'].width = 22
+        ws.column_dimensions['L'].width = 14
+        ws.column_dimensions['M'].width = 14
+        ws.column_dimensions['N'].width = 14
     
     output = io.BytesIO()
     wb.save(output)

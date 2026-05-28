@@ -22,7 +22,11 @@ export default function PublicRegister() {
     email: '',
     phone: '',
     plan_id: '',
-    gender: 'prefer_not_to_say'
+    gender: 'prefer_not_to_say',
+    document_id: '',
+    address: '',
+    city: '',
+    postal_code: ''
   });
   const [customForms, setCustomForms] = useState([]);
   const [formResponses, setFormResponses] = useState({});
@@ -60,6 +64,10 @@ export default function PublicRegister() {
       toast.error('Nombre y email son requeridos');
       return;
     }
+    if (!formData.document_id || !formData.address || !formData.city || !formData.postal_code) {
+      toast.error('DNI/NIE/Pasaporte, direccion, ciudad y codigo postal son obligatorios');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -70,6 +78,10 @@ export default function PublicRegister() {
         gym_id: gymId,
         plan_id: formData.plan_id || null,
         gender: formData.gender || 'prefer_not_to_say',
+        document_id: formData.document_id,
+        address: formData.address,
+        city: formData.city,
+        postal_code: formData.postal_code,
         form_responses: Object.keys(formResponses).length > 0 ? formResponses : null
       };
       const response = await axios.post(`${API}/members/register`, payload);
@@ -252,6 +264,55 @@ export default function PublicRegister() {
                 <option value="female">Mujer</option>
                 <option value="prefer_not_to_say">Prefiero no contestar</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">DNI / NIE / Pasaporte *</label>
+              <Input
+                value={formData.document_id}
+                onChange={(e) => setFormData({ ...formData, document_id: e.target.value })}
+                placeholder="12345678A"
+                className="input-dark"
+                data-testid="register-document-input"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Direccion *</label>
+              <Input
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Calle, numero, piso..."
+                className="input-dark"
+                data-testid="register-address-input"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Ciudad *</label>
+                <Input
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Madrid"
+                  className="input-dark"
+                  data-testid="register-city-input"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Codigo Postal *</label>
+                <Input
+                  value={formData.postal_code}
+                  onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                  placeholder="28001"
+                  className="input-dark"
+                  data-testid="register-postal-input"
+                  required
+                />
+              </div>
             </div>
 
             {customForms.length > 0 && customForms.map(form => (

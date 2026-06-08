@@ -42,8 +42,8 @@ VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '/dev/video0')
 VIDEO_DURATION = 4  # seconds
 VIDEO_DIR = '/tmp/gym24_videos'
 
-RELAY_ENTRADA = 17
-RELAY_SALIDA = 27
+RELAY_ENTRADA = 12
+RELAY_SALIDA = 16
 TIEMPO_APERTURA = 3
 
 os.makedirs(VIDEO_DIR, exist_ok=True)

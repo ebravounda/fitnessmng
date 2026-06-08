@@ -241,10 +241,16 @@ class AccessController:
         }
         buffer = ""
         shift_held = False
-        try:
-            device.grab()  # Bloqueo exclusivo del dispositivo
-        except Exception as e:
-            logger.warning(f"No se pudo grab del dispositivo: {e}")
+        # Solo intentar grab si aun no esta grabbed (evita warning en reinicios)
+        if not getattr(device, '_gym24_grabbed', False):
+            try:
+                device.grab()
+                device._gym24_grabbed = True
+            except OSError as e:
+                if e.errno != 16:  # Ignorar EBUSY (ya grabbed)
+                    logger.warning(f"No se pudo grab del dispositivo: {e}")
+            except Exception as e:
+                logger.warning(f"No se pudo grab del dispositivo: {e}")
 
         for event in device.read_loop():
             if event.type == ecodes.EV_KEY:

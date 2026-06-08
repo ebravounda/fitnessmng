@@ -146,14 +146,14 @@ class AccessController:
         thread = threading.Thread(target=_record_and_upload, daemon=True)
         thread.start()
     
-    def validar_qr(self, qr_code):
+    def validar_qr(self, qr_code, forced_direction="auto"):
         try:
             response = requests.post(
                 f"{SERVER_URL}/api/access/validate",
                 json={
                     "qr_code": qr_code,
                     "gym_token": GYM_TOKEN,
-                    "direction": "auto"
+                    "direction": forced_direction
                 },
                 timeout=10
             )
@@ -162,15 +162,15 @@ class AccessController:
             logger.error(f"Error: {e}")
             return {"valid": False, "reason": "Error de conexion"}
     
-    def procesar_qr(self, qr_code):
+    def procesar_qr(self, qr_code, forced_direction="auto"):
         if not qr_code:
             return
         
-        logger.info(f"QR escaneado: {qr_code[:20]}...")
-        resultado = self.validar_qr(qr_code)
+        logger.info(f"QR escaneado ({forced_direction}): {qr_code[:20]}...")
+        resultado = self.validar_qr(qr_code, forced_direction)
         
         if resultado.get('valid'):
-            direction = resultado.get('direction', 'entrada')
+            direction = resultado.get('direction', forced_direction if forced_direction != 'auto' else 'entrada')
             
             if resultado.get('is_guest'):
                 nombre = resultado.get('guest_name', 'Invitado')
@@ -191,21 +191,27 @@ class AccessController:
             print(f"\n  ACCESO DENEGADO: {razon}\n")
     
     def _find_qr_reader_device(self):
-        """Busca el dispositivo de entrada del lector QR USB."""
-        import glob
+        """Busca el primer dispositivo de entrada del lector QR USB (compatibilidad)."""
+        devices = self._find_all_qr_readers()
+        return devices[0] if devices else None
+
+    def _find_all_qr_readers(self):
+        """Busca TODOS los lectores QR USB conectados."""
         from evdev import InputDevice, list_devices
+        found = []
         for dev_path in list_devices():
             try:
                 d = InputDevice(dev_path)
-                # Buscamos un teclado USB (que es lo que es el lector QR)
                 name_lower = d.name.lower()
                 if 'qr' in name_lower or 'barcode' in name_lower or 'scanner' in name_lower or 'hid' in name_lower or 'keyboard' in name_lower:
-                    if d.name != 'gpio-keys':  # Excluir teclas internas
+                    if d.name != 'gpio-keys':
                         logger.info(f"Lector encontrado: {d.name} ({dev_path})")
-                        return d
+                        found.append(d)
             except Exception:
                 continue
-        return None
+        # Ordenar por path para que el orden sea estable entre reinicios
+        found.sort(key=lambda dev: dev.path)
+        return found
 
     def _read_qr_from_device(self, device):
         """Lee un QR completo del dispositivo USB hasta encontrar ENTER."""
@@ -261,6 +267,17 @@ class AccessController:
                         shift_held = False
         return None
 
+    def _reader_loop(self, device, forced_direction):
+        """Loop dedicado a leer de un lector y procesar con direccion forzada."""
+        logger.info(f"Thread iniciado: lector '{device.name}' -> {forced_direction.upper()}")
+        try:
+            while self.running:
+                qr_code = self._read_qr_from_device(device)
+                if qr_code:
+                    self.procesar_qr(qr_code, forced_direction)
+        except Exception as e:
+            logger.error(f"Error en lector {device.name}: {e}")
+
     def run(self):
         print("\n" + "="*50)
         print("   GYM24 - SISTEMA DE CONTROL DE ACCESO")
@@ -272,28 +289,49 @@ class AccessController:
         print("="*50)
         logger.info(f"Iniciando: Server={SERVER_URL} Device={DEVICE_ID}")
 
-        # Intentar usar lector USB via evdev (modo servicio)
-        device = None
+        # Buscar TODOS los lectores conectados
+        devices = []
         try:
-            device = self._find_qr_reader_device()
+            devices = self._find_all_qr_readers()
         except ImportError:
             logger.warning("evdev no instalado, usando modo stdin (manual)")
 
-        if device:
-            print(f"   Lector USB: {device.name}")
+        if devices:
+            # 1er lector (path mas bajo) = ENTRADA
+            # 2do lector = SALIDA
+            # Si hay solo 1, hace ENTRADA con direccion auto (servidor decide)
+            assignments = []
+            if len(devices) == 1:
+                assignments.append((devices[0], "auto"))
+                print(f"   Lector unico: {devices[0].name} -> ENTRADA/SALIDA auto")
+            else:
+                assignments.append((devices[0], "entrada"))
+                assignments.append((devices[1], "salida"))
+                print(f"   Lector ENTRADA: {devices[0].name}")
+                print(f"   Lector SALIDA:  {devices[1].name}")
+                if len(devices) > 2:
+                    print(f"   (Ignorando {len(devices) - 2} lectores adicionales)")
             print("="*50)
             print("   Esperando codigos QR...")
             print("="*50 + "\n")
-            logger.info("Modo USB activo - leyendo del lector QR")
+            logger.info(f"Modo USB activo - {len(assignments)} lectores")
+
+            threads = []
+            for device, direction in assignments:
+                t = threading.Thread(
+                    target=self._reader_loop,
+                    args=(device, direction),
+                    daemon=True
+                )
+                t.start()
+                threads.append(t)
+
             try:
                 while self.running:
-                    qr_code = self._read_qr_from_device(device)
-                    if qr_code:
-                        self.procesar_qr(qr_code)
+                    time.sleep(1)
             except KeyboardInterrupt:
                 print("\nCerrando...")
-            except Exception as e:
-                logger.error(f"Error en loop USB: {e}")
+                self.running = False
             finally:
                 if GPIO_AVAILABLE:
                     GPIO.cleanup()

@@ -38,7 +38,31 @@ except ImportError:
 SERVER_URL = os.environ.get('GYMACCESS_SERVER_URL', 'https://api.gym24.app')
 GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
 DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
-VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '/dev/video0')
+VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
+
+
+def _auto_detect_video_device():
+    """Auto-detecta el primer /dev/video* que funcione con v4l2."""
+    import glob
+    candidates = sorted(glob.glob('/dev/video*'))
+    for path in candidates:
+        try:
+            # Probar si el device soporta captura de video (no solo metadatos)
+            result = subprocess.run(
+                ['v4l2-ctl', '--device', path, '--all'],
+                capture_output=True, timeout=3
+            )
+            output = result.stdout.decode() + result.stderr.decode()
+            # Un device que soporta captura menciona 'Video Capture' en sus capabilities
+            if 'Video Capture' in output and 'Streaming' in output:
+                return path
+        except FileNotFoundError:
+            # v4l2-ctl no instalado, fallback: aceptar el primero
+            return path
+        except Exception:
+            continue
+    # Si no encontro ninguno con v4l2-ctl, devolver el primero disponible
+    return candidates[0] if candidates else None
 VIDEO_DURATION = 4  # seconds
 VIDEO_DIR = '/tmp/gym24_videos'
 
@@ -93,7 +117,13 @@ class AccessController:
         def _record_and_upload():
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filepath = f"{VIDEO_DIR}/{access_log_id}_{timestamp}.mp4"
-            
+
+            # Resolver dispositivo de video: env var o auto-deteccion
+            video_dev = VIDEO_DEVICE or _auto_detect_video_device()
+            if not video_dev or not os.path.exists(video_dev):
+                logger.warning(f"Camara no encontrada. VIDEO_DEVICE='{VIDEO_DEVICE}'. Dispositivos disponibles: {os.popen('ls /dev/video* 2>/dev/null').read().strip() or 'NINGUNO'}")
+                return
+
             try:
                 # Record 4 seconds using ffmpeg
                 cmd = [
@@ -101,18 +131,19 @@ class AccessController:
                     '-f', 'v4l2',
                     '-video_size', '640x480',
                     '-framerate', '15',
-                    '-i', VIDEO_DEVICE,
+                    '-i', video_dev,
                     '-t', str(VIDEO_DURATION),
                     '-c:v', 'libx264',
                     '-preset', 'ultrafast',
                     '-crf', '28',
                     filepath
                 ]
-                logger.info(f"Grabando video: {filepath}")
+                logger.info(f"Grabando video ({video_dev}): {filepath}")
                 result = subprocess.run(cmd, capture_output=True, timeout=VIDEO_DURATION + 5)
-                
+
                 if result.returncode != 0:
-                    logger.error(f"Error ffmpeg: {result.stderr.decode()[-200:]}")
+                    err = result.stderr.decode()[-300:]
+                    logger.error(f"Error ffmpeg en {video_dev}: {err}")
                     return
                 
                 # Upload to server
@@ -285,15 +316,19 @@ class AccessController:
             logger.error(f"Error en lector {device.name}: {e}")
 
     def run(self):
+        # Detectar camara (env var o auto)
+        active_video = VIDEO_DEVICE or _auto_detect_video_device()
+        camera_status = active_video if active_video and os.path.exists(active_video) else "NO DETECTADA"
+
         print("\n" + "="*50)
         print("   GYM24 - SISTEMA DE CONTROL DE ACCESO")
         print("   + GRABACION DE VIDEO EN ENTRADAS")
         print("="*50)
         print(f"   Servidor: {SERVER_URL}")
-        print(f"   Camara: {VIDEO_DEVICE}")
+        print(f"   Camara: {camera_status}")
         print(f"   Duracion clip: {VIDEO_DURATION}s")
         print("="*50)
-        logger.info(f"Iniciando: Server={SERVER_URL} Device={DEVICE_ID}")
+        logger.info(f"Iniciando: Server={SERVER_URL} Device={DEVICE_ID} Camera={camera_status}")
 
         # Buscar TODOS los lectores conectados
         devices = []

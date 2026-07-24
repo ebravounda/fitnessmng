@@ -1,0 +1,51 @@
+{
+  "summary": "Iteration 30 - Backend video pipeline testing (Raspberry Pi upload + admin viewing + cleanup). 15/16 backend tests pass. Full pipeline (upload -> persist reference on access_log -> list -> download via Bearer header -> manual cleanup -> cron function do_cleanup_old_videos) works correctly. One legitimate bug found: the query-parameter token fallback for GET /api/access/video/{video_id} is broken because auth.security = HTTPBearer() with default auto_error=True intercepts requests without an Authorization header before the endpoint can inspect the ?token= query param.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/access/video/{video_id}",
+        "issue": "Query-parameter ?token= authentication fallback does not work. The endpoint signature declares `credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)` and `token: Optional[str] = None`, but auth.py defines `security = HTTPBearer()` (auto_error defaults to True). Result: any request without an `Authorization: Bearer ...` header is rejected with 403 by HTTPBearer before the endpoint runs. This breaks HTML5 <video src=\"/api/access/video/xxx?token=jwt\"> playback where the browser cannot inject an Authorization header. Fix: change auth.py to `security = HTTPBearer(auto_error=False)` (this endpoint already tolerates Optional creds) or use a route-specific dependency."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration30_video_endpoints.py",
+    "/app/test_reports/pytest/pytest_results_iteration30.xml"
+  ],
+  "action_items": [
+    "Change `security = HTTPBearer()` to `security = HTTPBearer(auto_error=False)` in /app/backend/auth.py so the video endpoint's query-param token fallback works for <video> tags. Verify all other endpoints that depend on `security` still receive 401 via decode_jwt_token(None)-> None -> raise 401 (a quick audit of routes using `security` is needed since some assume creds is never None).",
+    "OPTIONAL: Consider migrating from @app.on_event('startup'/'shutdown') to FastAPI lifespan handlers (deprecation warnings during test run)."
+  ],
+  "critical_code_review_comments": [
+    "video_routes.py POST /api/access/video correctly authenticates by gym api_token (device-friendly, no admin JWT needed) - good design for Raspberry Pi.",
+    "video_routes.py uses UUID4 for video filenames to avoid collisions - good.",
+    "10MB size limit is checked AFTER reading the whole upload into memory (`await video.read()` then `len(content) > 10MB`). For 11MB it still works, but for very large uploads this loads entire body first. Consider streaming/size check via Content-Length header for robustness. Not blocking.",
+    "server.py do_cleanup_old_videos() and video_routes.py DELETE /api/access/videos/cleanup have the SAME logic duplicated (~15 lines). Extract into a shared helper to keep DRY.",
+    "The Raspberry Pi client (raspberry_access_control.py) presumably POSTs to /api/access/video (form fields access_log_id, gym_token, file 'video'). This aligns with the backend contract - confirmed by tests.",
+    "MongoDB _id is properly excluded in all video-related queries (find with {'_id': 0} projection). Verified via list endpoint response."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration30_video_endpoints.py"
+  ],
+  "success_rate": {
+    "backend": "93.75% (15/16 tests passed)",
+    "frontend": "not tested (backend-only request)"
+  },
+  "test_credentials": {
+    "super_admin": "info@gym24.es / admin123",
+    "gym_id_used": "33562209-fdcc-42df-9fa7-fb4a5939214c",
+    "gym_api_token_used": "eOj7FRBkJe2gbE_TugB8gOJKSJYTWVYjnGomxwrIM2M",
+    "member_id_used": "345518e1-a13e-4c9e-ad93-2fd62aa12f90"
+  },
+  "seed_data_creation": "No new seed data created. Used existing gym 'Bd Test' and member 'Bd Emergente' from preview DB. Test dynamically generates a valid QR (via qr_utils.generate_qr_data) and calls /api/access/validate to obtain a real access_log_id for each run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 30 tests backend video pipeline endpoints defined in /app/backend/routes/video_routes.py. Endpoint names differ from the review-request description: it's `/api/access/video` (POST, singular) NOT `/api/access/upload-video`, and `/api/access/video/{video_id}` (GET, singular) NOT `/api/access/videos/{id}`. The list endpoint is `/api/access/videos` (plural) and cleanup is `/api/access/videos/cleanup`. The Raspberry Pi bug (missing /dev/video0) cannot be reproduced from preview - backend accepts uploads correctly. Real bug to fix: HTTPBearer(auto_error=True) breaks the query-param ?token= fallback of GET /api/access/video/{video_id}. When main agent fixes it, re-run test_get_video_success_query_token.",
+  "rca_of_query_token_bug": "Root cause: /app/backend/auth.py line 15 => `security = HTTPBearer()`. In FastAPI/starlette, HTTPBearer with auto_error=True (default) responds 403 'Not authenticated' immediately when the Authorization header is missing or malformed, BEFORE any endpoint code runs. Consequently, video_routes.py:61 `credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)` never receives None; the request is rejected. Reproduction: `curl 'https://<host>/api/access/video/<video_id>?token=<valid_jwt>'` -> 403. With Authorization header: -> 200. Mitigation: set `security = HTTPBearer(auto_error=False)` and add explicit None handling in every endpoint that already treats creds as required (they call `credentials.credentials` unconditionally). Alternative surgical fix: define a dedicated `optional_security = HTTPBearer(auto_error=False)` for the video route only, leaving other routes unchanged."
+}

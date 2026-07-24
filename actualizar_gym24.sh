@@ -161,7 +161,7 @@ if command -v yarn >/dev/null 2>&1 && [ -f "$REPO_DIR/frontend/package.json" ]; 
     echo "  Instalando dependencias..."
     yarn install --frozen-lockfile 2>&1 | tail -3
     echo "  Construyendo con URL produccion..."
-    REACT_APP_BACKEND_URL="https://$API_DOMAIN" yarn build 2>&1 | tail -3
+    NODE_OPTIONS="--max-old-space-size=1536" REACT_APP_BACKEND_URL="https://$API_DOMAIN" yarn build 2>&1 | tail -3
 fi
 
 if [ -d "$REPO_DIR/frontend/build" ]; then

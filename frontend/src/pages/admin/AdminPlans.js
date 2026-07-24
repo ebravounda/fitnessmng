@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Plus, Trash2, Calendar, Clock, Building2, ChevronDown, ChevronRight, Pencil, DollarSign, Upload, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clock, Building2, ChevronDown, ChevronRight, Pencil, DollarSign, Upload, FileSpreadsheet, Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminPlans() {
@@ -17,7 +17,7 @@ export default function AdminPlans() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPlan, setNewPlan] = useState({
-    name: '', description: '', price: '', duration_days: '', access_type: 'unlimited', gym_id: ''
+    name: '', description: '', price: '', duration_days: '', access_type: 'unlimited', gym_id: '', is_internal: false
   });
   const [gyms, setGyms] = useState([]);
   const [collapsedGyms, setCollapsedGyms] = useState({});
@@ -57,23 +57,24 @@ export default function AdminPlans() {
   };
 
   const handleCreatePlan = async () => {
-    if (!newPlan.name || !newPlan.price || !newPlan.duration_days) {
+    if (!newPlan.name || (!newPlan.is_internal && !newPlan.price) || !newPlan.duration_days) {
       toast.error('Nombre, precio y duracion son requeridos');
       return;
     }
     const gymId = isSuperAdmin ? newPlan.gym_id : admin?.gym_id;
     if (!gymId) { toast.error('Selecciona un gimnasio'); return; }
     try {
+      const priceValue = newPlan.is_internal ? 0 : parseFloat(newPlan.price);
       if (editPlan) {
-        await updatePlan(editPlan.id, { ...newPlan, price: parseFloat(newPlan.price), duration_days: parseInt(newPlan.duration_days) });
+        await updatePlan(editPlan.id, { ...newPlan, price: priceValue, duration_days: parseInt(newPlan.duration_days) });
         toast.success('Plan actualizado');
       } else {
-        await createPlan({ ...newPlan, gym_id: gymId, price: parseFloat(newPlan.price), duration_days: parseInt(newPlan.duration_days) });
+        await createPlan({ ...newPlan, gym_id: gymId, price: priceValue, duration_days: parseInt(newPlan.duration_days) });
         toast.success('Plan creado exitosamente');
       }
       setShowCreateModal(false);
       setEditPlan(null);
-      setNewPlan({ name: '', description: '', price: '', duration_days: '', access_type: 'unlimited', gym_id: '' });
+      setNewPlan({ name: '', description: '', price: '', duration_days: '', access_type: 'unlimited', gym_id: '', is_internal: false });
       fetchPlans();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error');
@@ -88,7 +89,8 @@ export default function AdminPlans() {
       price: plan.price?.toString() || '',
       duration_days: plan.duration_days?.toString() || '',
       access_type: plan.access_type || 'unlimited',
-      gym_id: plan.gym_id || ''
+      gym_id: plan.gym_id || '',
+      is_internal: !!plan.is_internal
     });
     setShowCreateModal(true);
   };
@@ -141,7 +143,7 @@ export default function AdminPlans() {
         )}
         <Dialog open={showCreateModal} onOpenChange={(v) => { setShowCreateModal(v); if (!v) setEditPlan(null); }}>
           <DialogTrigger asChild>
-            <Button className="btn-gym-primary" data-testid="create-plan-btn" onClick={() => { setEditPlan(null); setNewPlan({ name: '', description: '', price: '', duration_days: '', access_type: 'unlimited', gym_id: '' }); }}>
+            <Button className="btn-gym-primary" data-testid="create-plan-btn" onClick={() => { setEditPlan(null); setNewPlan({ name: '', description: '', price: '', duration_days: '', access_type: 'unlimited', gym_id: '', is_internal: false }); }}>
               <Plus size={20} className="mr-2" /> Nuevo Plan
             </Button>
           </DialogTrigger>
@@ -175,7 +177,7 @@ export default function AdminPlans() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>Precio</label>
-                  <Input type="number" step="0.01" value={newPlan.price} onChange={(e) => setNewPlan({ ...newPlan, price: e.target.value })} placeholder="30.00" className="input-dark" data-testid="plan-price-input" />
+                  <Input type="number" step="0.01" value={newPlan.is_internal ? '0' : newPlan.price} disabled={newPlan.is_internal} onChange={(e) => setNewPlan({ ...newPlan, price: e.target.value })} placeholder="30.00" className="input-dark" data-testid="plan-price-input" />
                 </div>
                 <div>
                   <label className="text-sm mb-1 block" style={{ color: 'var(--text-secondary)' }}>Duracion (dias)</label>
@@ -192,6 +194,17 @@ export default function AdminPlans() {
                     }>{preset.label}</button>
                 ))}
               </div>
+              <label className="flex items-start gap-3 p-3 rounded-lg cursor-pointer border" style={{ background: 'var(--bg-tertiary)', borderColor: newPlan.is_internal ? 'var(--gym-primary)' : 'var(--border-secondary)' }} data-testid="plan-internal-toggle">
+                <input type="checkbox" checked={!!newPlan.is_internal} onChange={(e) => setNewPlan({ ...newPlan, is_internal: e.target.checked, price: e.target.checked ? '0' : newPlan.price, duration_days: e.target.checked && (!newPlan.duration_days || parseInt(newPlan.duration_days) < 365) ? '3650' : newPlan.duration_days })} className="mt-0.5 h-4 w-4 accent-orange-500 cursor-pointer" />
+                <div className="flex-1">
+                  <div className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    <Shield size={14} style={{ color: 'var(--gym-primary)' }} /> Plan Interno (personal / entrenadores)
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Gratuito, no aparece en la web publica ni en contabilidad. Permite acceso QR normal.
+                  </div>
+                </div>
+              </label>
               <Button onClick={handleCreatePlan} className="w-full btn-gym-primary" data-testid="save-plan-btn">
                 {editPlan ? <><Pencil size={20} className="mr-2" /> Guardar Cambios</> : <><Plus size={20} className="mr-2" /> Crear Plan</>}
               </Button>
@@ -234,9 +247,14 @@ export default function AdminPlans() {
                           <Trash2 size={14} />
                         </button>
                       </div>
-                      <h3 className="font-bold mb-2">{plan.name}</h3>
+                      <h3 className="font-bold mb-2 flex items-center gap-2">
+                        {plan.name}
+                        {plan.is_internal && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide" style={{ background: 'rgba(255,102,0,0.15)', color: 'var(--gym-primary)', border: '1px solid rgba(255,102,0,0.3)' }}>Interno</span>
+                        )}
+                      </h3>
                       <div className="flex items-baseline gap-1 mb-3">
-                        <span className="text-3xl font-black" style={{ color: 'var(--gym-primary)' }}>{formatCurrency(plan.price)}</span>
+                        <span className="text-3xl font-black" style={{ color: 'var(--gym-primary)' }}>{plan.is_internal ? 'Gratis' : formatCurrency(plan.price)}</span>
                       </div>
                       <div className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                         <div className="flex items-center gap-2"><Clock size={14} /><span>{getDurationLabel(plan.duration_days)}</span></div>
@@ -262,9 +280,14 @@ export default function AdminPlans() {
                   <Trash2 size={16} />
                 </button>
               </div>
-              <h3 className="font-bold text-lg mb-2">{plan.name}</h3>
+              <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                {plan.name}
+                {plan.is_internal && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide" style={{ background: 'rgba(255,102,0,0.15)', color: 'var(--gym-primary)', border: '1px solid rgba(255,102,0,0.3)' }}>Interno</span>
+                )}
+              </h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-black" style={{ color: 'var(--gym-primary)' }}>{formatCurrency(plan.price)}</span>
+                <span className="text-4xl font-black" style={{ color: 'var(--gym-primary)' }}>{plan.is_internal ? 'Gratis' : formatCurrency(plan.price)}</span>
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}><Clock size={16} /><span>{getDurationLabel(plan.duration_days)}</span></div>

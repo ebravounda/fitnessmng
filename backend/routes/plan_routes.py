@@ -12,6 +12,10 @@ router = APIRouter(prefix="/api")
 @router.post("/plans")
 async def create_plan(plan: PlanCreate, admin: dict = Depends(get_current_admin)):
     plan_dict = plan.model_dump()
+    if plan_dict.get("is_internal"):
+        plan_dict["price"] = 0.0
+        if not plan_dict.get("duration_days") or plan_dict["duration_days"] < 365:
+            plan_dict["duration_days"] = 3650  # 10 years
     plan_dict["id"] = str(uuid.uuid4())
     plan_dict["created_at"] = datetime.now(timezone.utc).isoformat()
     plan_dict["active"] = True
@@ -31,9 +35,9 @@ async def get_plans(gym_id: Optional[str] = None, admin: dict = Depends(get_curr
 
 @router.get("/plans/public/{gym_id}")
 async def get_plans_public(gym_id: str):
-    plans = await db.plans.find({"gym_id": gym_id, "active": True}, {"_id": 0}).to_list(100)
+    plans = await db.plans.find({"gym_id": gym_id, "active": True, "is_internal": {"$ne": True}}, {"_id": 0}).to_list(100)
     if not plans:
-        plans = await db.plans.find({"gym_id": gym_id}, {"_id": 0}).to_list(100)
+        plans = await db.plans.find({"gym_id": gym_id, "is_internal": {"$ne": True}}, {"_id": 0}).to_list(100)
     return plans
 
 @router.delete("/plans/{plan_id}")
@@ -43,10 +47,12 @@ async def delete_plan(plan_id: str, admin: dict = Depends(get_current_admin)):
 
 @router.put("/plans/{plan_id}")
 async def update_plan(plan_id: str, plan_update: dict, admin: dict = Depends(get_current_admin)):
-    allowed_fields = {"name", "description", "price", "duration_days", "access_type"}
+    allowed_fields = {"name", "description", "price", "duration_days", "access_type", "is_internal"}
     update_data = {k: v for k, v in plan_update.items() if k in allowed_fields and v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No data to update")
+    if update_data.get("is_internal"):
+        update_data["price"] = 0.0
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.plans.update_one({"id": plan_id}, {"$set": update_data})
     plan = await db.plans.find_one({"id": plan_id}, {"_id": 0})

@@ -110,7 +110,7 @@ export default function AdminAccess() {
 
   const playVideo = (videoId) => {
     const API = process.env.REACT_APP_BACKEND_URL;
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('token');
     setVideoUrl(`${API}/api/access/video/${videoId}?token=${token}`);
     setShowVideoModal(true);
   };

@@ -1461,7 +1461,7 @@ export default function AdminMembers() {
                     size="sm"
                     onClick={() => {
                       const API = process.env.REACT_APP_BACKEND_URL;
-                      const token = localStorage.getItem('admin_token');
+                      const token = localStorage.getItem('token');
                       setPlayingVideoUrl(`${API}/api/access/video/${log.video_id}?token=${token}`);
                     }}
                     className="text-orange-400 hover:text-orange-300"

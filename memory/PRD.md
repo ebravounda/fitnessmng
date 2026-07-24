@@ -81,6 +81,14 @@ docker run -d \
   - Antes: `/opt/gymaccess/uploads` (compartido con IngresoQR, archivos perdidos al rebuild)
   - Ahora: `/opt/gym24/uploads` con bind mount + `UPLOAD_DIR` en .env
 
+### Sesión 9 (Jul 24, 2026) — Fix reproducción video Raspberry Pi
+- **Bug FIX #1**: `HTTPBearer(auto_error=True)` bloqueaba `<video src>` con token en query → cambiado a `auto_error=False` en `auth.py`
+- **Bug FIX #2**: `AdminAccess.js` y `AdminMembers.js` usaban `localStorage.getItem('admin_token')` (clave inexistente) → cambiado a `localStorage.getItem('token')` (clave real usada por AuthContext)
+- **Bug FIX #3**: Docker mount incorrecto: `/opt/gym24/videos:/app/videos` → arreglado a `/opt/gym24/videos:/opt/gym24/videos` (backend escribía a path ephemeral dentro del container)
+- **Deploy improvement**: `actualizar_gym24.sh` ahora usa `NODE_OPTIONS="--max-old-space-size=1536"` para evitar OOM durante yarn build en VPS con 3.7GB RAM
+- **Infra**: Instalado yarn global en el VPS + swap ampliado a 4GB
+- **Validación**: Usuario confirmó reproducción exitosa tras nuevo escaneo QR (Jul 24)
+
 ## Backlog
 
 ### P0 (próxima sesión)

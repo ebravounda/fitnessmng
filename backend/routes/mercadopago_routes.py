@@ -30,7 +30,7 @@ async def create_mp_preference(
     plan_id: str,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
     if not member:

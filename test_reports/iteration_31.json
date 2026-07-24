@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 31 - Regression testing of HTTPBearer(auto_error=False) fix applied in /app/backend/auth.py plus the mass replacement of decode_jwt_token(credentials.credentials) -> decode_jwt_token(credentials) across all route files. All 46 tests pass (30 new regression tests + 16 pre-existing video pipeline tests from iteration 30). The primary bug from iteration 30 is fully resolved: GET /api/access/video/{video_id}?token=<jwt> now returns the video correctly for HTML5 <video> playback. No regressions detected: admin login, member CRUD, classes, video upload/download, impersonation, notifications, routines, payments, gamification all working. Endpoints without an Authorization header return 401 (Not authenticated) - never 500 (no AttributeError on None credentials).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration31_httpbearer_fix.py",
+    "/app/backend/tests/test_iteration30_video_endpoints.py",
+    "/app/test_reports/pytest/pytest_results_iteration31.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "auth.py: security = HTTPBearer(auto_error=False) is now used globally. decode_jwt_token() properly handles str | HTTPAuthorizationCredentials | None and raises 401 for None. get_current_admin() explicitly checks credentials is None. This is a clean, safe fix.",
+    "All route modules (access_routes, auth_routes, class_routes, gamification_routes, mercadopago_routes, notification_guest_routes, payment_routes, routine_routes, upload_routes, video_routes) consistently use `decode_jwt_token(credentials)` - grep confirms zero remaining occurrences of `credentials.credentials` except in video_routes.py:64 where it's guarded with `credentials.credentials if credentials else None` (correct).",
+    "video_routes.py GET /api/access/video/{video_id} correctly falls back to query-param ?token= when Authorization header is missing. This enables <video src='.../api/access/video/xxx?token=jwt'> playback.",
+    "OPTIONAL (not blocking): migrate FastAPI @app.on_event('startup'/'shutdown') to lifespan handlers (deprecation warnings during test run).",
+    "OPTIONAL: /api/auth/me for admin does not exist (only /api/auth/member/me). If the admin panel needs to introspect the current admin, consider adding an /api/auth/admin/me endpoint. Not blocking."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration31_httpbearer_fix.py"
+  ],
+  "success_rate": {
+    "backend": "100% (46/46 tests passed: 30 iteration31 + 16 iteration30)",
+    "frontend": "not tested (backend-only request)"
+  },
+  "test_credentials": {
+    "super_admin": "info@gym24.es / admin123"
+  },
+  "seed_data_creation": "Uses existing gym 'Bd Test' and its active member from preview DB. Each test run dynamically generates a valid QR via qr_utils.generate_qr_data and calls POST /api/access/validate to obtain a real access_log_id, then uploads a small (~2 KB) MP4 to that log. Test members are prefixed TEST_iter31_ and are deleted at the end of TestMemberFlowRegression.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 31 confirms the HTTPBearer(auto_error=False) fix from iteration 30 is complete and regression-free. Reusable regression file at /app/backend/tests/test_iteration31_httpbearer_fix.py covers 30 tests: video query-token fix (5), no-auth returns 401 across 11 endpoints (11), admin login (3), members CRUD (2), classes (1), video upload (1), list endpoints (5), impersonation (2). Combine with test_iteration30_video_endpoints.py for full video pipeline coverage. Both suites run in <10 seconds. No known open bugs.",
+  "rca_of_the_issue": "Fix verified. Original root cause was auth.py line 15 using `HTTPBearer()` with default auto_error=True; starlette rejected any request without Authorization header with 403 before endpoint code executed, breaking the ?token= query-param fallback used by <video src=...?token=jwt>. Fix: `HTTPBearer(auto_error=False)` + None-tolerant decode_jwt_token + explicit None check in get_current_admin + mass replace `credentials.credentials` -> `credentials`. Validated end-to-end: query-token 200 OK, header 200 OK, no-auth 401, invalid-token 401, no 500 on any endpoint."
+}

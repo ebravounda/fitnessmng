@@ -12,7 +12,7 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'default_secret_change_me')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -29,13 +29,27 @@ def create_jwt_token(data: dict, remember: bool = False) -> str:
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-def decode_jwt_token(token: str) -> dict:
+def decode_jwt_token(token) -> dict:
+    """Decodifica un JWT. Acepta:
+    - str (el token directo)
+    - HTTPAuthorizationCredentials (extrae .credentials)
+    - None (lanza 401)
+    """
+    if token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    # Si es HTTPAuthorizationCredentials, extraer el token string
+    if hasattr(token, 'credentials'):
+        token = token.credentials
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     token = credentials.credentials
     payload = decode_jwt_token(token)
     admin = await db.admins.find_one({"id": payload.get("sub")}, {"_id": 0})

@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api")
 
 @router.get("/qr/generate")
 async def generate_qr(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     gym_id = payload.get("gym_id")
     gym = await db.gyms.find_one({"id": gym_id}, {"_id": 0})
@@ -258,7 +258,7 @@ async def get_access_logs(
 
 @router.get("/access/logs/member")
 async def get_member_access_logs(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     logs = await db.access_logs.find({"member_id": member_id}, {"_id": 0}).sort("timestamp", -1).to_list(50)
     return logs
@@ -266,7 +266,7 @@ async def get_member_access_logs(credentials: HTTPAuthorizationCredentials = Dep
 @router.get("/access/stats/member")
 async def get_member_visit_stats_pwa(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Visit statistics for the logged-in member (PWA)"""
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()

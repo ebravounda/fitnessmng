@@ -73,7 +73,7 @@ async def delete_routine(routine_id: str, admin: dict = Depends(get_current_admi
 
 @router.get("/routines/me")
 async def get_my_routines(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     routines = await db.routines.find(
         {"member_id": member_id, "active": True}, {"_id": 0}
@@ -84,7 +84,7 @@ async def get_my_routines(credentials: HTTPAuthorizationCredentials = Depends(se
 
 @router.post("/routines/{routine_id}/log")
 async def log_routine_progress(routine_id: str, request: Request, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     body = await request.json()
     log = {
@@ -102,7 +102,7 @@ async def log_routine_progress(routine_id: str, request: Request, credentials: H
 
 @router.get("/routines/{routine_id}/logs")
 async def get_routine_logs(routine_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     logs = await db.routine_logs.find(
         {"routine_id": routine_id, "member_id": member_id}, {"_id": 0}

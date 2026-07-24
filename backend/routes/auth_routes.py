@@ -57,7 +57,7 @@ async def login_admin(login: AdminLogin, request: Request):
 
 @router.post("/auth/admin/impersonate/{gym_id}")
 async def impersonate_gym(gym_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     if payload.get("role") != "super_admin":
         raise HTTPException(status_code=403, detail="Solo el super admin puede usar esta funcion")
     gym = await db.gyms.find_one({"id": gym_id}, {"_id": 0})
@@ -134,7 +134,7 @@ async def login_member(code: str, request: Request, device_fingerprint: str = No
 
 @router.get("/auth/member/me")
 async def get_member_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     if payload.get("role") != "member":
         raise HTTPException(status_code=403, detail="Not a member")
     member = await db.members.find_one({"id": payload.get("sub")}, {"_id": 0})

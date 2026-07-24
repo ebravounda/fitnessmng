@@ -40,7 +40,7 @@ async def get_notifications(gym_id: Optional[str] = None, admin: dict = Depends(
 
 @router.get("/notifications/member")
 async def get_member_notifications(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     gym_id = payload.get("gym_id")
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
@@ -54,7 +54,7 @@ async def get_member_notifications(credentials: HTTPAuthorizationCredentials = D
 
 @router.post("/notifications/{notification_id}/read")
 async def mark_notification_read(notification_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     await db.notifications.update_one({"id": notification_id}, {"$addToSet": {"read_by": member_id}})
     return {"message": "Marked as read"}
@@ -69,7 +69,7 @@ async def delete_notification(notification_id: str, admin: dict = Depends(get_cu
 
 @router.post("/guests")
 async def create_guest_pass(guest: GuestCreate, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
     if not member:
@@ -98,7 +98,7 @@ async def create_guest_pass(guest: GuestCreate, credentials: HTTPAuthorizationCr
 
 @router.get("/guests/member")
 async def get_member_guests(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     guests = await db.guests.find({"invited_by": member_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
     now = datetime.now(timezone.utc)

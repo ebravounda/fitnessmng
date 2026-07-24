@@ -86,7 +86,7 @@ async def compute_member_gamification(member_id: str, gym_id: str):
 
 @router.get("/gamification/me")
 async def get_my_gamification(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     gym_id = payload.get("gym_id")
     data = await compute_member_gamification(member_id, gym_id)

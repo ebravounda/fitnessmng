@@ -358,7 +358,7 @@ async def cancel_schedule(schedule_id: str, admin: dict = Depends(get_current_ad
 
 @router.post("/bookings")
 async def create_booking(booking: BookingCreate, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     if payload.get("role") != "member":
         raise HTTPException(status_code=403, detail="Only members can book classes")
@@ -415,7 +415,7 @@ async def get_bookings(
 
 @router.get("/bookings/member")
 async def get_member_bookings(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     bookings = await db.bookings.find(
         {"member_id": member_id, "status": {"$ne": "cancelled"}}, {"_id": 0}
@@ -430,7 +430,7 @@ async def get_member_bookings(credentials: HTTPAuthorizationCredentials = Depend
 
 @router.delete("/bookings/{booking_id}")
 async def cancel_booking(booking_id: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     member_id = payload.get("sub")
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:

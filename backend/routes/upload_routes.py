@@ -20,7 +20,7 @@ async def upload_avatar(
     file: UploadFile = File(...),
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    payload = decode_jwt_token(credentials.credentials)
+    payload = decode_jwt_token(credentials)
     user_id = payload.get("sub")
     
     if file.content_type not in ALLOWED_IMAGE_TYPES:

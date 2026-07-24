@@ -105,26 +105,10 @@ echo ""
 # =====================================================
 # PASO 4: Reconstruir imagen Docker (solo si requirements cambiaron)
 # =====================================================
-echo "[4/6] Verificando si necesita rebuild de imagen..."
-NEEDS_REBUILD=0
-if [ -f "$BACKEND_DIR/requirements-prod.txt.last" ]; then
-    if ! diff -q "$BACKEND_DIR/requirements-prod.txt" "$BACKEND_DIR/requirements-prod.txt.last" > /dev/null 2>&1; then
-        NEEDS_REBUILD=1
-        echo "  requirements-prod.txt cambio. Rebuild necesario."
-    else
-        echo "  requirements-prod.txt sin cambios."
-    fi
-else
-    NEEDS_REBUILD=1
-    echo "  Primera vez. Rebuild necesario."
-fi
-
-if [ "$NEEDS_REBUILD" = "1" ]; then
-    echo "  Reconstruyendo imagen Docker..."
-    cd "$BACKEND_DIR"
-    docker build -t "$DOCKER_IMAGE" . 2>&1 | tail -10
-    cp "$BACKEND_DIR/requirements-prod.txt" "$BACKEND_DIR/requirements-prod.txt.last"
-fi
+echo "[4/6] Reconstruyendo imagen Docker (siempre, para reflejar cambios de codigo)..."
+cd "$BACKEND_DIR"
+docker build -t "$DOCKER_IMAGE" . 2>&1 | tail -5
+cp "$BACKEND_DIR/requirements-prod.txt" "$BACKEND_DIR/requirements-prod.txt.last" 2>/dev/null || true
 
 # Recrear contenedor con TODOS los mounts y red correctos
 echo "  Recreando contenedor (con bind mounts seguros)..."

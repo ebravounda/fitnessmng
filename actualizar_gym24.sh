@@ -146,7 +146,7 @@ docker run -d \
     -p 8003:8001 \
     --env-file "$BACKEND_DIR/.env" \
     -v /opt/gym24/uploads:/opt/gym24/uploads \
-    -v /opt/gym24/videos:/app/videos \
+    -v /opt/gym24/videos:/opt/gym24/videos \
     "$DOCKER_IMAGE"
 
 echo "OK - Backend desplegado"

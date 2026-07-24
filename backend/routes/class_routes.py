@@ -191,6 +191,25 @@ async def toggle_staff_active(staff_id: str, body: dict, admin: dict = Depends(g
     await db.admins.update_one({"id": staff_id}, {"$set": {"active": new_active}})
     return {"message": "Activado" if new_active else "Desactivado", "active": new_active}
 
+
+@router.delete("/staff/{staff_id}")
+async def delete_staff(staff_id: str, admin: dict = Depends(get_current_admin)):
+    check_role(admin, ["super_admin", "gym_admin"])
+    if staff_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propia cuenta")
+    target = await db.admins.find_one({"id": staff_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if admin["role"] != "super_admin" and admin.get("gym_id") != target.get("gym_id"):
+        raise HTTPException(status_code=403, detail="No tienes acceso a este usuario")
+    # Protection: prevent deleting the last super_admin
+    if target.get("role") == "super_admin":
+        remaining = await db.admins.count_documents({"role": "super_admin", "id": {"$ne": staff_id}})
+        if remaining == 0:
+            raise HTTPException(status_code=400, detail="No se puede eliminar el ultimo super admin")
+    await db.admins.delete_one({"id": staff_id})
+    return {"message": "Usuario eliminado", "id": staff_id}
+
 # ==================== CLASS ROUTES ====================
 
 @router.post("/classes")

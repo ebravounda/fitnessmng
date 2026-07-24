@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { 
-  Plus, User, Mail, Phone, Dumbbell, MoreVertical, Shield, Settings2, Check, X as XIcon
+  Plus, User, Mail, Phone, Dumbbell, MoreVertical, Shield, Settings2, Check, X as XIcon, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../../components/ui/dropdown-menu';
@@ -122,6 +122,19 @@ export default function AdminStaff() {
       toast.success(currentActive ? 'Usuario desactivado' : 'Usuario activado');
       fetchStaff();
     } catch (error) { toast.error(error.response?.data?.detail || 'Error al actualizar'); }
+  };
+
+  const handleDelete = async (userId, userName) => {
+    if (userId === admin?.id) {
+      toast.error('No puedes eliminar tu propia cuenta');
+      return;
+    }
+    if (!window.confirm(`¿Eliminar definitivamente a ${userName}? Esta accion no se puede deshacer.`)) return;
+    try {
+      await axios.delete(`${API}/staff/${userId}`);
+      toast.success('Usuario eliminado');
+      fetchStaff();
+    } catch (error) { toast.error(error.response?.data?.detail || 'Error al eliminar'); }
   };
 
   const openPermissions = (user) => {
@@ -244,7 +257,7 @@ export default function AdminStaff() {
       {/* Admins */}
       {admins.length > 0 && (
         <StaffSection title="Administradores" icon={<Shield size={20} className="text-purple-400" />}
-          users={admins} onToggleActive={handleToggleActive} currentAdminId={admin?.id} />
+          users={admins} onToggleActive={handleToggleActive} onDelete={handleDelete} currentAdminId={admin?.id} />
       )}
 
       {/* Managers with permissions */}
@@ -261,7 +274,7 @@ export default function AdminStaff() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {managers.map((user) => (
-              <ManagerCard key={user.id} user={user} onToggleActive={handleToggleActive} onEditPerms={openPermissions} currentAdminId={admin?.id} />
+              <ManagerCard key={user.id} user={user} onToggleActive={handleToggleActive} onEditPerms={openPermissions} onDelete={handleDelete} currentAdminId={admin?.id} />
             ))}
           </div>
         )}
@@ -269,7 +282,7 @@ export default function AdminStaff() {
 
       {/* Trainers */}
       <StaffSection title="Entrenadores" icon={<Dumbbell size={20} className="text-emerald-400" />}
-        users={trainers} onToggleActive={handleToggleActive} isTrainer emptyMsg="No hay entrenadores registrados" currentAdminId={admin?.id} />
+        users={trainers} onToggleActive={handleToggleActive} onDelete={handleDelete} isTrainer emptyMsg="No hay entrenadores registrados" currentAdminId={admin?.id} />
 
       {/* Permissions Modal */}
       <Dialog open={showPermsModal} onOpenChange={setShowPermsModal}>
@@ -337,7 +350,7 @@ export default function AdminStaff() {
   );
 }
 
-function StaffSection({ title, icon, users, onToggleActive, isTrainer = false, emptyMsg, currentAdminId }) {
+function StaffSection({ title, icon, users, onToggleActive, onDelete, isTrainer = false, emptyMsg, currentAdminId }) {
   if (users.length === 0 && emptyMsg) {
     return (
       <div>
@@ -355,14 +368,14 @@ function StaffSection({ title, icon, users, onToggleActive, isTrainer = false, e
       <h2 className="text-lg font-bold mb-4 flex items-center gap-2">{icon} {title}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {users.map((user) => (
-          <UserCard key={user.id} user={user} onToggleActive={onToggleActive} isTrainer={isTrainer} currentAdminId={currentAdminId} />
+          <UserCard key={user.id} user={user} onToggleActive={onToggleActive} onDelete={onDelete} isTrainer={isTrainer} currentAdminId={currentAdminId} />
         ))}
       </div>
     </div>
   );
 }
 
-function ManagerCard({ user, onToggleActive, onEditPerms, currentAdminId }) {
+function ManagerCard({ user, onToggleActive, onEditPerms, onDelete, currentAdminId }) {
   const roleInfo = ROLE_LABELS[user.role];
   const permCount = (user.permissions || []).length;
   const totalPerms = Object.keys(PERMISSION_LABELS).length;
@@ -393,6 +406,11 @@ function ManagerCard({ user, onToggleActive, onEditPerms, currentAdminId }) {
                 {user.active === false ? 'Activar' : 'Desactivar'}
               </DropdownMenuItem>
             )}
+            {user.id !== currentAdminId && onDelete && (
+              <DropdownMenuItem onClick={() => onDelete(user.id, user.name)} className="cursor-pointer text-red-500" data-testid={`delete-staff-${user.id}`}>
+                <Trash2 size={16} className="mr-2" /> Eliminar
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -420,7 +438,7 @@ function ManagerCard({ user, onToggleActive, onEditPerms, currentAdminId }) {
   );
 }
 
-function UserCard({ user, onToggleActive, isTrainer = false, currentAdminId }) {
+function UserCard({ user, onToggleActive, onDelete, isTrainer = false, currentAdminId }) {
   const roleInfo = ROLE_LABELS[user.role] || { label: user.role, color: 'bg-zinc-700 text-zinc-300' };
   return (
     <div className={`stat-card ${user.active === false ? 'opacity-60' : ''}`}>
@@ -440,9 +458,16 @@ function UserCard({ user, onToggleActive, isTrainer = false, currentAdminId }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-700">
             {user.id !== currentAdminId ? (
-              <DropdownMenuItem onClick={() => onToggleActive(user.id, user.active !== false)} className="cursor-pointer text-red-400">
-                {user.active === false ? 'Activar' : 'Desactivar'}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={() => onToggleActive(user.id, user.active !== false)} className="cursor-pointer text-red-400">
+                  {user.active === false ? 'Activar' : 'Desactivar'}
+                </DropdownMenuItem>
+                {onDelete && (
+                  <DropdownMenuItem onClick={() => onDelete(user.id, user.name)} className="cursor-pointer text-red-500" data-testid={`delete-user-${user.id}`}>
+                    <Trash2 size={16} className="mr-2" /> Eliminar
+                  </DropdownMenuItem>
+                )}
+              </>
             ) : (
               <DropdownMenuItem disabled className="text-zinc-600 cursor-not-allowed">
                 Tu cuenta

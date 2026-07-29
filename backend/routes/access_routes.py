@@ -163,7 +163,8 @@ async def validate_access(validation: AccessValidation):
         return {
             "valid": True, "member_name": member["name"], "member_code": member.get("code"),
             "direction": direction, "access_type": "rfid",
-            "membership_end": membership.get("end_date")
+            "membership_end": membership.get("end_date"),
+            "access_log_id": access_log["id"]
         }
     
     # QR code validation (existing logic)
@@ -198,7 +199,7 @@ async def validate_access(validation: AccessValidation):
         await db.guests.update_one({"id": guest_id}, {"$inc": {"accesses": 1}})
         return {"valid": True, "is_guest": True, "guest_name": guest["name"],
                 "guest_code": guest["code"], "invited_by": guest["invited_by_name"],
-                "direction": validation.direction}
+                "direction": validation.direction, "access_log_id": access_log["id"]}
     # Regular member
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
     if not member:

@@ -151,6 +151,33 @@ export default function AdminMembers() {
   const [rfidInput, setRfidInput] = useState('');
   const [rfidListening, setRfidListening] = useState(false);
   const [savingRfid, setSavingRfid] = useState(false);
+  const photoInputRef = useRef(null);
+  const [photoTargetMemberId, setPhotoTargetMemberId] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const triggerPhotoUpload = (memberId) => {
+    setPhotoTargetMemberId(memberId);
+    // Timeout ensures dropdown closes before file picker opens
+    setTimeout(() => photoInputRef.current?.click(), 100);
+  };
+
+  const handlePhotoSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset input
+    if (!file || !photoTargetMemberId) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('La imagen no puede superar 2MB'); return; }
+    setUploadingPhoto(true);
+    try {
+      await uploadAvatarAdmin(photoTargetMemberId, file);
+      toast.success('Foto actualizada');
+      fetchMembers();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Error al subir foto');
+    } finally {
+      setUploadingPhoto(false);
+      setPhotoTargetMemberId(null);
+    }
+  };
 
   useEffect(() => { fetchMembers(); fetchPlans(); if (isSuperAdmin) fetchGyms(); }, [statusFilter]);
 
@@ -754,17 +781,8 @@ export default function AdminMembers() {
                           </>
                         )}
                         <DropdownMenuSeparator className="bg-zinc-700" />
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer text-violet-400 p-0" data-testid={`member-photo-${member.code}`}>
-                          <label className="flex items-center gap-2 cursor-pointer w-full px-2 py-1.5">
-                            <Camera size={16} /> Subir Foto
-                            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={async (e) => {
-                              const file = e.target.files[0];
-                              if (!file) return;
-                              if (file.size > 2 * 1024 * 1024) { toast.error('La imagen no puede superar 2MB'); return; }
-                              try { await uploadAvatarAdmin(member.id, file); toast.success('Foto actualizada'); fetchMembers(); }
-                              catch (err) { toast.error(err.response?.data?.detail || 'Error al subir foto'); }
-                            }} />
-                          </label>
+                        <DropdownMenuItem onClick={() => triggerPhotoUpload(member.id)} disabled={uploadingPhoto} className="cursor-pointer text-violet-400" data-testid={`member-photo-${member.code}`}>
+                          <Camera size={16} className="mr-2" /> {uploadingPhoto && photoTargetMemberId === member.id ? 'Subiendo...' : 'Subir Foto'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleOpenDevices(member)} className="cursor-pointer text-zinc-400" data-testid={`member-devices-${member.code}`}>
                           <Smartphone size={16} className="mr-2" /> Dispositivos
@@ -1585,6 +1603,15 @@ export default function AdminMembers() {
         </DialogContent>
       </Dialog>
 
+      {/* Global hidden file input for member photo uploads (works on mobile) */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handlePhotoSelected}
+        data-testid="member-photo-input"
+      />
 
     </div>
   );

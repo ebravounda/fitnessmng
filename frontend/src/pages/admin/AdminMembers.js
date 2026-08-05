@@ -688,42 +688,55 @@ export default function AdminMembers() {
                   <td className="p-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <code className="text-xs px-2 py-0.5 rounded font-mono" style={{ background: 'var(--bg-tertiary)', color: 'var(--gym-primary)' }}>{member.code}</code>
-                      {member.license_code && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button
-                              className="text-[10px] bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 hover:text-blue-300 transition-colors px-1.5 py-0.5 rounded leading-none border border-blue-500/30"
-                              data-testid={`member-license-badge-${member.code}`}
-                              title="Ver informacion de licencia"
-                            >
-                              Cod. Licencia
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent align="start" className="w-64 bg-zinc-900 border-zinc-700 text-sm" data-testid={`member-license-popover-${member.code}`}>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 pb-2 border-b border-zinc-800">
-                                <span className="text-xs uppercase tracking-wider text-blue-400 font-semibold">Licencia</span>
-                              </div>
-                              <div>
-                                <div className="text-[10px] uppercase text-zinc-500">Codigo</div>
-                                <div className="font-mono text-white">{member.license_code}</div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            className={`text-[10px] px-1.5 py-0.5 rounded leading-none border transition-colors ${
+                              member.license_code
+                                ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 hover:text-blue-300 border-blue-500/30'
+                                : 'bg-zinc-800/50 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 border-zinc-700 border-dashed'
+                            }`}
+                            data-testid={`member-license-badge-${member.code}`}
+                            title="Ver / editar licencia"
+                          >
+                            Cod. Licencia
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-64 bg-zinc-900 border-zinc-700 text-sm" data-testid={`member-license-popover-${member.code}`}>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+                              <span className="text-xs uppercase tracking-wider text-blue-400 font-semibold">Licencia</span>
+                              <button onClick={() => handleOpenEdit(member)} className="text-[10px] text-orange-400 hover:text-orange-300" data-testid={`member-license-edit-${member.code}`}>
+                                Editar
+                              </button>
+                            </div>
+                            {member.license_code ? (
+                              <>
                                 <div>
-                                  <div className="text-[10px] uppercase text-zinc-500">Expedicion</div>
-                                  <div className="text-white">{member.license_issue_date ? new Date(member.license_issue_date).toLocaleDateString('es') : '—'}</div>
+                                  <div className="text-[10px] uppercase text-zinc-500">Codigo</div>
+                                  <div className="font-mono text-white">{member.license_code}</div>
                                 </div>
-                                <div>
-                                  <div className="text-[10px] uppercase text-zinc-500">Caducidad</div>
-                                  <div className={`${member.license_expiry_date && new Date(member.license_expiry_date) < new Date() ? 'text-red-400' : 'text-white'}`}>
-                                    {member.license_expiry_date ? new Date(member.license_expiry_date).toLocaleDateString('es') : '—'}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <div className="text-[10px] uppercase text-zinc-500">Expedicion</div>
+                                    <div className="text-white">{member.license_issue_date ? new Date(member.license_issue_date).toLocaleDateString('es') : '—'}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[10px] uppercase text-zinc-500">Caducidad</div>
+                                    <div className={`${member.license_expiry_date && new Date(member.license_expiry_date) < new Date() ? 'text-red-400' : 'text-white'}`}>
+                                      {member.license_expiry_date ? new Date(member.license_expiry_date).toLocaleDateString('es') : '—'}
+                                    </div>
                                   </div>
                                 </div>
+                              </>
+                            ) : (
+                              <div className="text-zinc-500 text-xs py-2">
+                                Este socio aun no tiene licencia asignada. Pincha en &quot;Editar&quot; para agregarla.
                               </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      )}
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       {member.qr_mode === 'static' && <span className="text-[10px] bg-cyan-900/30 text-cyan-400 px-1.5 py-0.5 rounded leading-none">QR Fijo</span>}
                       {member.rfid_uid && <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded leading-none" title={`RFID: ${member.rfid_uid}`}>RFID</span>}
                     </div>

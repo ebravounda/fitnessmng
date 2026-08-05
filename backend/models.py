@@ -65,6 +65,9 @@ class MemberCreate(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
+    license_code: Optional[str] = None
+    license_issue_date: Optional[str] = None  # YYYY-MM-DD
+    license_expiry_date: Optional[str] = None  # YYYY-MM-DD
 
 class MemberPublicRegister(BaseModel):
     email: EmailStr
@@ -93,6 +96,9 @@ class MemberUpdate(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
+    license_code: Optional[str] = None
+    license_issue_date: Optional[str] = None
+    license_expiry_date: Optional[str] = None
 
 class PlanCreate(BaseModel):
     gym_id: str

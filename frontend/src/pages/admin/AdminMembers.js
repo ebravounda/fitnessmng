@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { 
   Search, Plus, MoreVertical, Check,
@@ -108,8 +109,8 @@ export default function AdminMembers() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [suspendReason, setSuspendReason] = useState('');
-  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', gym_id: admin?.gym_id || '', gender: 'prefer_not_to_say', document_id: '', address: '', city: '', postal_code: '' });
-  const [editData, setEditData] = useState({ name: '', email: '', phone: '', can_bring_guests: false, max_guests_per_month: 2, guest_valid_days: 1, document_id: '', address: '', city: '', postal_code: '' });
+  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', gym_id: admin?.gym_id || '', gender: 'prefer_not_to_say', document_id: '', address: '', city: '', postal_code: '', license_code: '', license_issue_date: '', license_expiry_date: '' });
+  const [editData, setEditData] = useState({ name: '', email: '', phone: '', can_bring_guests: false, max_guests_per_month: 2, guest_valid_days: 1, document_id: '', address: '', city: '', postal_code: '', license_code: '', license_issue_date: '', license_expiry_date: '' });
   const [memberFormResponses, setMemberFormResponses] = useState([]);
   const [expandedContact, setExpandedContact] = useState(null);
   const [showDevicesModal, setShowDevicesModal] = useState(false);
@@ -223,7 +224,7 @@ export default function AdminMembers() {
       await createMember({ ...newMember, gym_id: gymId });
       toast.success('Socio creado exitosamente');
       setShowCreateModal(false);
-      setNewMember({ name: '', email: '', phone: '', gym_id: '', gender: 'prefer_not_to_say', document_id: '', address: '', city: '', postal_code: '' });
+      setNewMember({ name: '', email: '', phone: '', gym_id: '', gender: 'prefer_not_to_say', document_id: '', address: '', city: '', postal_code: '', license_code: '', license_issue_date: '', license_expiry_date: '' });
       fetchMembers();
     } catch (error) { toast.error(error.response?.data?.detail || 'Error al crear socio'); }
   };
@@ -240,7 +241,10 @@ export default function AdminMembers() {
       document_id: member.document_id || '',
       address: member.address || '',
       city: member.city || '',
-      postal_code: member.postal_code || ''
+      postal_code: member.postal_code || '',
+      license_code: member.license_code || '',
+      license_issue_date: member.license_issue_date || '',
+      license_expiry_date: member.license_expiry_date || ''
     });
     setMemberFormResponses([]);
     setShowEditModal(true);
@@ -594,6 +598,26 @@ export default function AdminMembers() {
                           placeholder="28001" className="input-dark" data-testid="member-postal-input" />
                       </div>
                     </div>
+                    <div className="pt-3 border-t border-zinc-800">
+                      <p className="text-xs uppercase tracking-wide text-zinc-500 mb-2">Licencia (opcional)</p>
+                      <div>
+                        <label className="text-sm text-zinc-400 mb-1 block">Codigo de Licencia</label>
+                        <Input value={newMember.license_code} onChange={(e) => setNewMember({ ...newMember, license_code: e.target.value })}
+                          placeholder="LIC-2026-0001" className="input-dark" data-testid="member-license-code-input" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div>
+                          <label className="text-sm text-zinc-400 mb-1 block">Fecha de Expedicion</label>
+                          <Input type="date" value={newMember.license_issue_date} onChange={(e) => setNewMember({ ...newMember, license_issue_date: e.target.value })}
+                            className="input-dark" data-testid="member-license-issue-input" />
+                        </div>
+                        <div>
+                          <label className="text-sm text-zinc-400 mb-1 block">Fecha de Caducidad</label>
+                          <Input type="date" value={newMember.license_expiry_date} onChange={(e) => setNewMember({ ...newMember, license_expiry_date: e.target.value })}
+                            className="input-dark" data-testid="member-license-expiry-input" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <Button onClick={handleCreateMember} className="w-full btn-gym-primary" data-testid="save-member-btn">
@@ -664,6 +688,42 @@ export default function AdminMembers() {
                   <td className="p-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <code className="text-xs px-2 py-0.5 rounded font-mono" style={{ background: 'var(--bg-tertiary)', color: 'var(--gym-primary)' }}>{member.code}</code>
+                      {member.license_code && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              className="text-[10px] bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 hover:text-blue-300 transition-colors px-1.5 py-0.5 rounded leading-none border border-blue-500/30"
+                              data-testid={`member-license-badge-${member.code}`}
+                              title="Ver informacion de licencia"
+                            >
+                              Cod. Licencia
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-64 bg-zinc-900 border-zinc-700 text-sm" data-testid={`member-license-popover-${member.code}`}>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 pb-2 border-b border-zinc-800">
+                                <span className="text-xs uppercase tracking-wider text-blue-400 font-semibold">Licencia</span>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-zinc-500">Codigo</div>
+                                <div className="font-mono text-white">{member.license_code}</div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <div className="text-[10px] uppercase text-zinc-500">Expedicion</div>
+                                  <div className="text-white">{member.license_issue_date ? new Date(member.license_issue_date).toLocaleDateString('es') : '—'}</div>
+                                </div>
+                                <div>
+                                  <div className="text-[10px] uppercase text-zinc-500">Caducidad</div>
+                                  <div className={`${member.license_expiry_date && new Date(member.license_expiry_date) < new Date() ? 'text-red-400' : 'text-white'}`}>
+                                    {member.license_expiry_date ? new Date(member.license_expiry_date).toLocaleDateString('es') : '—'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
                       {member.qr_mode === 'static' && <span className="text-[10px] bg-cyan-900/30 text-cyan-400 px-1.5 py-0.5 rounded leading-none">QR Fijo</span>}
                       {member.rfid_uid && <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded leading-none" title={`RFID: ${member.rfid_uid}`}>RFID</span>}
                     </div>
@@ -879,6 +939,30 @@ export default function AdminMembers() {
                     <label className="text-sm text-zinc-400 mb-1 block">Codigo Postal</label>
                     <Input value={editData.postal_code} onChange={(e) => setEditData({ ...editData, postal_code: e.target.value })}
                       placeholder="28001" className="input-dark" data-testid="edit-member-postal" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Licencia */}
+            <div className="border-t border-zinc-800 pt-4">
+              <p className="text-xs text-orange-500 mb-3 uppercase tracking-wider font-semibold">Licencia</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm text-zinc-400 mb-1 block">Codigo de Licencia</label>
+                  <Input value={editData.license_code} onChange={(e) => setEditData({ ...editData, license_code: e.target.value })}
+                    placeholder="LIC-2026-0001" className="input-dark" data-testid="edit-member-license-code" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm text-zinc-400 mb-1 block">Fecha de Expedicion</label>
+                    <Input type="date" value={editData.license_issue_date} onChange={(e) => setEditData({ ...editData, license_issue_date: e.target.value })}
+                      className="input-dark" data-testid="edit-member-license-issue" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-zinc-400 mb-1 block">Fecha de Caducidad</label>
+                    <Input type="date" value={editData.license_expiry_date} onChange={(e) => setEditData({ ...editData, license_expiry_date: e.target.value })}
+                      className="input-dark" data-testid="edit-member-license-expiry" />
                   </div>
                 </div>
               </div>

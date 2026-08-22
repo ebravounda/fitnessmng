@@ -7,12 +7,15 @@ import { Button } from '../../components/ui/button';
 import { Calendar } from '../../components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Search, Calendar as CalendarIcon, Download, ArrowUpRight, ArrowDownLeft, BarChart3, User, FileSpreadsheet, Video } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, Download, ArrowUpRight, ArrowDownLeft, BarChart3, User, FileSpreadsheet, Video, RotateCcw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function AdminAccess() {
   const { admin, isSuperAdmin } = useAuth();
@@ -56,6 +59,21 @@ export default function AdminAccess() {
       console.error('Error fetching member stats:', error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  const handleResetAccess = async (memberId, memberName) => {
+    if (!window.confirm(`Reiniciar acceso de ${memberName}?\n\nLa proxima marca con QR/RFID sera ENTRADA (util cuando un socio quedo "adentro" por error).`)) return;
+    try {
+      const { data } = await axios.post(`${API_URL}/access/reset/${memberId}`);
+      if (data.reset) {
+        toast.success(data.message);
+        fetchLogs();
+      } else {
+        toast.info(data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al reiniciar acceso');
     }
   };
 
@@ -234,10 +252,23 @@ export default function AdminAccess() {
                     <td className="text-zinc-400 text-sm">{formatDateTime(log.timestamp)}</td>
                     <td>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center font-bold text-xs">
+                        {log.avatar_url ? (
+                          <img
+                            src={log.avatar_url.startsWith('http') ? log.avatar_url : `${process.env.REACT_APP_BACKEND_URL}${log.avatar_url}`}
+                            alt={log.member_name}
+                            className="w-8 h-8 rounded-full object-cover border border-zinc-700"
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                            data-testid={`log-avatar-${log.id}`}
+                          />
+                        ) : null}
+                        <div
+                          className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center font-bold text-xs"
+                          style={{ display: log.avatar_url ? 'none' : 'flex' }}
+                        >
                           {(log.member_name || log.guest_name || '?').charAt(0)}
                         </div>
                         <span className="font-medium">{log.member_name || log.guest_name || '-'}</span>
+                        {log.system_reset && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Acceso reiniciado por admin">Reset</span>}
                       </div>
                     </td>
                     <td>
@@ -286,6 +317,19 @@ export default function AdminAccess() {
                           >
                             <BarChart3 size={16} className="mr-1" />
                             <span className="text-xs">Stats</span>
+                          </Button>
+                        )}
+                        {isSuperAdmin && log.member_id && !log.is_guest && log.direction === 'entrada' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResetAccess(log.member_id, log.member_name)}
+                            className="h-8 px-2 text-amber-400 hover:text-amber-300"
+                            title="Reiniciar acceso (proxima marca sera entrada)"
+                            data-testid={`reset-access-${log.member_id}`}
+                          >
+                            <RotateCcw size={16} className="mr-1" />
+                            <span className="text-xs">Reset</span>
                           </Button>
                         )}
                       </div>

@@ -10,6 +10,8 @@ import time
 import logging
 import threading
 import subprocess
+import socket
+import shutil
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
@@ -39,6 +41,9 @@ SERVER_URL = os.environ.get('GYMACCESS_SERVER_URL', 'https://api.gym24.app')
 GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
 DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
 VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
+SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gymaccess')
+SOFTWARE_VERSION = '2.1'
+HEARTBEAT_SECONDS = 20
 
 
 def _auto_detect_video_device():
@@ -79,6 +84,10 @@ class AccessController:
         self.running = True
         self._last_scan = {}
         self._scan_lock = threading.Lock()
+        self.reader_names = []
+        self.last_scan_at = None
+        self.last_scan_result = None
+        self._cpu_prev = None
         
         if GPIO_AVAILABLE:
             GPIO.setmode(GPIO.BCM)
@@ -91,18 +100,142 @@ class AccessController:
         self.ping_thread = threading.Thread(target=self._ping_loop, daemon=True)
         self.ping_thread.start()
     
+    # ==================== MONITOR / TELEMETRIA ====================
+
+    def _local_ip(self):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.connect(("8.8.8.8", 80))
+                return sock.getsockname()[0]
+        except OSError:
+            return None
+
+    def _read_file(self, path):
+        try:
+            with open(path) as f:
+                return f.read()
+        except OSError:
+            return None
+
+    def _cpu_temp(self):
+        raw = self._read_file('/sys/class/thermal/thermal_zone0/temp')
+        return round(int(raw) / 1000, 1) if raw and raw.strip().isdigit() else None
+
+    def _cpu_usage(self):
+        raw = self._read_file('/proc/stat')
+        if not raw:
+            return None
+        vals = [int(v) for v in raw.splitlines()[0].split()[1:]]
+        idle, total = vals[3] + vals[4], sum(vals)
+        prev, self._cpu_prev = self._cpu_prev, (idle, total)
+        if not prev or total == prev[1]:
+            return None
+        return round(100 * (1 - (idle - prev[0]) / (total - prev[1])), 1)
+
+    def _memory_usage(self):
+        raw = self._read_file('/proc/meminfo')
+        if not raw:
+            return None
+        info = {line.split(':')[0]: int(line.split()[1]) for line in raw.splitlines() if len(line.split()) > 1}
+        total, avail = info.get('MemTotal'), info.get('MemAvailable')
+        return round(100 * (1 - avail / total), 1) if total and avail is not None else None
+
+    def _disk_usage(self):
+        usage = shutil.disk_usage('/')
+        return round(100 * usage.used / usage.total, 1)
+
+    def _uptime(self):
+        raw = self._read_file('/proc/uptime')
+        return int(float(raw.split()[0])) if raw else None
+
+    def _wifi_signal(self):
+        raw = self._read_file('/proc/net/wireless')
+        if not raw:
+            return None
+        lines = raw.strip().splitlines()[2:]
+        if not lines:
+            return None
+        try:
+            return int(float(lines[0].split()[3].rstrip('.')))
+        except (IndexError, ValueError):
+            return None
+
+    def _camera(self):
+        dev = VIDEO_DEVICE or _auto_detect_video_device()
+        return dev if dev and os.path.exists(dev) else None
+
+    def _telemetry(self):
+        return {
+            "gym_token": GYM_TOKEN,
+            "local_ip": self._local_ip(),
+            "hostname": socket.gethostname(),
+            "cpu_temp": self._cpu_temp(),
+            "cpu_usage": self._cpu_usage(),
+            "memory_usage": self._memory_usage(),
+            "disk_usage": self._disk_usage(),
+            "uptime": self._uptime(),
+            "wifi_signal": self._wifi_signal(),
+            "software_version": SOFTWARE_VERSION,
+            "qr_readers": self.reader_names,
+            "camera": self._camera(),
+            "last_scan_at": self.last_scan_at,
+            "last_scan_result": self.last_scan_result,
+        }
+
     def _ping_loop(self):
         while self.running:
             try:
-                requests.post(
-                    f"{SERVER_URL}/api/devices/{DEVICE_ID}/ping",
-                    params={"gym_token": GYM_TOKEN},
-                    timeout=5
-                )
-            except:
-                pass
-            time.sleep(60)
-    
+                r = requests.post(f"{SERVER_URL}/api/devices/{DEVICE_ID}/heartbeat", json=self._telemetry(), timeout=8)
+                if r.status_code in (404, 405) and 'no encontrado' not in r.text.lower():
+                    # Servidor antiguo sin /heartbeat
+                    requests.post(f"{SERVER_URL}/api/devices/{DEVICE_ID}/ping", params={"gym_token": GYM_TOKEN}, timeout=5)
+                elif r.ok and r.json().get("command"):
+                    data = r.json()
+                    threading.Thread(target=self._run_command, args=(data["command_id"], data["command"]), daemon=True).start()
+            except Exception as e:
+                logger.debug(f"Heartbeat fallido: {e}")
+            time.sleep(HEARTBEAT_SECONDS)
+
+    def _report_command(self, command_id, success, output):
+        try:
+            requests.post(
+                f"{SERVER_URL}/api/devices/{DEVICE_ID}/command-result",
+                json={"gym_token": GYM_TOKEN, "command_id": command_id, "success": success, "output": output},
+                timeout=8,
+            )
+        except Exception as e:
+            logger.error(f"No se pudo reportar resultado de comando: {e}")
+
+    def _run_command(self, command_id, command):
+        logger.info(f"Comando remoto recibido: {command}")
+        try:
+            if command == 'open_entrada':
+                self.abrir_torno('entrada')
+                self._report_command(command_id, True, "Torno ENTRADA abierto")
+            elif command == 'open_salida':
+                self.abrir_torno('salida')
+                self._report_command(command_id, True, "Torno SALIDA abierto")
+            elif command == 'test_video':
+                filepath = f"{VIDEO_DIR}/test_{int(time.time())}.mp4"
+                error = self._record_clip(filepath)
+                if error:
+                    self._report_command(command_id, False, error)
+                else:
+                    size = os.path.getsize(filepath)
+                    os.remove(filepath)
+                    self._report_command(command_id, True, f"Video de {VIDEO_DURATION}s grabado OK ({size // 1024} KB)")
+            elif command == 'restart_service':
+                self._report_command(command_id, True, f"Reiniciando servicio {SERVICE_NAME}...")
+                subprocess.run(['sudo', 'systemctl', 'restart', SERVICE_NAME], timeout=30)
+            elif command == 'reboot':
+                self._report_command(command_id, True, "Reiniciando Raspberry...")
+                subprocess.run(['sudo', 'reboot'], timeout=30)
+            else:
+                self._report_command(command_id, False, f"Comando desconocido: {command}")
+        except Exception as e:
+            logger.error(f"Error ejecutando comando {command}: {e}")
+            self._report_command(command_id, False, f"Error: {e}")
+
     def abrir_torno(self, direccion):
         pin = RELAY_ENTRADA if direccion == 'entrada' else RELAY_SALIDA
         nombre = "ENTRADA" if direccion == 'entrada' else "SALIDA"
@@ -115,40 +248,38 @@ class AccessController:
             time.sleep(TIEMPO_APERTURA)
         logger.info(f"Torno {nombre} cerrado")
     
+    def _record_clip(self, filepath):
+        """Graba VIDEO_DURATION segundos en filepath. Devuelve mensaje de error o None."""
+        video_dev = VIDEO_DEVICE or _auto_detect_video_device()
+        if not video_dev or not os.path.exists(video_dev):
+            available = os.popen('ls /dev/video* 2>/dev/null').read().strip() or 'NINGUNO'
+            return f"Camara no encontrada. VIDEO_DEVICE='{VIDEO_DEVICE}'. Dispositivos: {available}"
+        cmd = [
+            'ffmpeg', '-y', '-f', 'v4l2', '-video_size', '640x480', '-framerate', '15',
+            '-i', video_dev, '-t', str(VIDEO_DURATION),
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', filepath
+        ]
+        logger.info(f"Grabando video ({video_dev}): {filepath}")
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=VIDEO_DURATION + 5)
+        except subprocess.TimeoutExpired:
+            return "Timeout grabando video"
+        if result.returncode != 0:
+            return f"Error ffmpeg en {video_dev}: {result.stderr.decode()[-300:]}"
+        return None
+
     def grabar_video(self, access_log_id):
         """Graba 4 segundos de video y lo sube al servidor en background."""
         def _record_and_upload():
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filepath = f"{VIDEO_DIR}/{access_log_id}_{timestamp}.mp4"
 
-            # Resolver dispositivo de video: env var o auto-deteccion
-            video_dev = VIDEO_DEVICE or _auto_detect_video_device()
-            if not video_dev or not os.path.exists(video_dev):
-                logger.warning(f"Camara no encontrada. VIDEO_DEVICE='{VIDEO_DEVICE}'. Dispositivos disponibles: {os.popen('ls /dev/video* 2>/dev/null').read().strip() or 'NINGUNO'}")
-                return
-
             try:
-                # Record 4 seconds using ffmpeg
-                cmd = [
-                    'ffmpeg', '-y',
-                    '-f', 'v4l2',
-                    '-video_size', '640x480',
-                    '-framerate', '15',
-                    '-i', video_dev,
-                    '-t', str(VIDEO_DURATION),
-                    '-c:v', 'libx264',
-                    '-preset', 'ultrafast',
-                    '-crf', '28',
-                    filepath
-                ]
-                logger.info(f"Grabando video ({video_dev}): {filepath}")
-                result = subprocess.run(cmd, capture_output=True, timeout=VIDEO_DURATION + 5)
-
-                if result.returncode != 0:
-                    err = result.stderr.decode()[-300:]
-                    logger.error(f"Error ffmpeg en {video_dev}: {err}")
+                error = self._record_clip(filepath)
+                if error:
+                    logger.error(error)
                     return
-                
+
                 # Upload to server
                 logger.info(f"Subiendo video ({os.path.getsize(filepath)} bytes)...")
                 with open(filepath, 'rb') as f:
@@ -163,7 +294,7 @@ class AccessController:
                     )
                 
                 if response.status_code == 200:
-                    logger.info(f"Video subido correctamente")
+                    logger.info("Video subido correctamente")
                 else:
                     logger.error(f"Error al subir video: {response.status_code} {response.text[:100]}")
                 
@@ -210,6 +341,12 @@ class AccessController:
         
         logger.info(f"QR escaneado ({forced_direction}): {qr_code[:20]}...")
         resultado = self.validar_qr(qr_code, forced_direction)
+        
+        self.last_scan_at = datetime.now().isoformat(timespec='seconds')
+        self.last_scan_result = (
+            f"{resultado.get('member_name') or resultado.get('guest_name') or 'Socio'} - {resultado.get('direction', '')}"
+            if resultado.get('valid') else f"DENEGADO: {resultado.get('reason', 'Desconocido')}"
+        )
         
         if resultado.get('duplicate'):
             logger.info(f"Doble lectura ignorada por servidor: {resultado.get('member_name', '')}")
@@ -351,6 +488,8 @@ class AccessController:
             devices = self._find_all_qr_readers()
         except ImportError:
             logger.warning("evdev no instalado, usando modo stdin (manual)")
+
+        self.reader_names = [f"{d.name} ({d.path})" for d in devices[:2]]
 
         if devices:
             # 1er lector (path mas bajo) = ENTRADA

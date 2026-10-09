@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
-import { Wifi, WifiOff, RefreshCw, Globe, MapPin, Cpu } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Cpu } from 'lucide-react';
+import { DeviceMonitorCard } from '../../components/DeviceMonitorCard';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -18,7 +19,7 @@ export default function AdminDeviceMonitor() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchDevices(); const i = setInterval(fetchDevices, 30000); return () => clearInterval(i); }, [fetchDevices]);
+  useEffect(() => { fetchDevices(); const i = setInterval(fetchDevices, 10000); return () => clearInterval(i); }, [fetchDevices]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-[var(--gym-primary)] border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -64,42 +65,7 @@ export default function AdminDeviceMonitor() {
         </div>
       ) : (
         <div className="space-y-3">
-          {devices.map((d) => {
-            const isOnline = d.computed_status === 'online';
-            return (
-              <div 
-                key={d.id} 
-                className="stat-card flex items-center justify-between"
-                style={{ borderColor: isOnline ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }}
-                data-testid={`device-card-${d.id}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-3 h-3 rounded-full shrink-0 ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-                  <div>
-                    <h3 className="font-bold">{d.name || 'Dispositivo'}</h3>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{d.gym_name}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-6">
-                  <div className="text-right hidden sm:block">
-                    <div className="flex items-center gap-1.5 justify-end mb-1">
-                      <Globe size={12} style={{ color: 'var(--text-dim)' }} />
-                      <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{d.ip_address || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <MapPin size={12} style={{ color: 'var(--text-dim)' }} />
-                      <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{d.local_ip || '-'}</span>
-                    </div>
-                  </div>
-
-                  <span className={`text-xs px-3 py-1.5 rounded-lg font-bold ${isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                    {isOnline ? 'EN LINEA' : 'OFFLINE'}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+          {devices.map((d) => <DeviceMonitorCard key={d.id} d={d} onRefresh={fetchDevices} />)}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-from storage import write_file
+from storage import put_object
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from typing import Optional, List
@@ -40,7 +40,7 @@ async def create_online_class(
     if len(content) > 500 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Video demasiado grande (max 500MB)")
 
-    write_file(str(filepath), content)
+    put_object(str(filepath), content, video.content_type or "video/mp4")
 
     # assigned_to: "all" or comma-separated member IDs
     member_ids = [] if assigned_to == "all" else [mid.strip() for mid in assigned_to.split(",") if mid.strip()]

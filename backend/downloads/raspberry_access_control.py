@@ -1,369 +1,562 @@
 #!/usr/bin/env python3
+"""
+Gym24 - Control de Acceso con Raspberry Pi + Grabacion de Video
+Graba 4 segundos de video al validar una ENTRADA.
+"""
+
 import os
 import sys
 import time
-import json
 import logging
 import threading
+import subprocess
+import socket
+import shutil
+import requests
+from datetime import datetime
 from dotenv import load_dotenv
-load_dotenv()
 
-import evdev
-from evdev import ecodes
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/var/log/gymaccess.log'),
+        logging.FileHandler('/var/log/gym24-access.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
+# GPIO
 try:
     import RPi.GPIO as GPIO
     GPIO_AVAILABLE = True
 except ImportError:
-    logger.warning("RPi.GPIO no disponible - modo simulacion")
+    logger.warning("GPIO no disponible - modo simulacion")
     GPIO_AVAILABLE = False
 
-import requests
+# Config
+SERVER_URL = os.environ.get('GYMACCESS_SERVER_URL', 'https://api.gym24.app')
+GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
+DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
+VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
+SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gym24-access')
+SOFTWARE_VERSION = '2.1'
+HEARTBEAT_SECONDS = 20
 
-SERVER_URL = os.environ.get('GYMACCESS_SERVER_URL', 'https://c.ingresoqr.com')
-GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', 'TU_TOKEN_AQUI')
-DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', 'TU_DEVICE_ID')
-RELAY_ENTRADA = int(os.environ.get('GYMACCESS_RELAY_ENTRADA', '12'))
-RELAY_SALIDA = int(os.environ.get('GYMACCESS_RELAY_SALIDA', '16'))
+
+def _auto_detect_video_device():
+    """Auto-detecta el primer /dev/video* que funcione con v4l2."""
+    import glob
+    candidates = sorted(glob.glob('/dev/video*'))
+    for path in candidates:
+        try:
+            # Probar si el device soporta captura de video (no solo metadatos)
+            result = subprocess.run(
+                ['v4l2-ctl', '--device', path, '--all'],
+                capture_output=True, timeout=3
+            )
+            output = result.stdout.decode() + result.stderr.decode()
+            # Un device que soporta captura menciona 'Video Capture' en sus capabilities
+            if 'Video Capture' in output and 'Streaming' in output:
+                return path
+        except FileNotFoundError:
+            # v4l2-ctl no instalado, fallback: aceptar el primero
+            return path
+        except Exception:
+            continue
+    # Si no encontro ninguno con v4l2-ctl, devolver el primero disponible
+    return candidates[0] if candidates else None
+VIDEO_DURATION = 4  # seconds
+VIDEO_DIR = '/tmp/gym24_videos'
+
+RELAY_ENTRADA = 12
+RELAY_SALIDA = 16
 TIEMPO_APERTURA = 3
-PING_INTERVAL = 60
-SCANNER_MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scanner_map.json')
+DEBOUNCE_SEGUNDOS = 3  # ignora el mismo QR leido de nuevo (o por el otro lector) en este lapso
 
-KEYS = {
-    ecodes.KEY_0: '0', ecodes.KEY_1: '1', ecodes.KEY_2: '2',
-    ecodes.KEY_3: '3', ecodes.KEY_4: '4', ecodes.KEY_5: '5',
-    ecodes.KEY_6: '6', ecodes.KEY_7: '7', ecodes.KEY_8: '8',
-    ecodes.KEY_9: '9', ecodes.KEY_A: 'a', ecodes.KEY_B: 'b',
-    ecodes.KEY_C: 'c', ecodes.KEY_D: 'd', ecodes.KEY_E: 'e',
-    ecodes.KEY_F: 'f', ecodes.KEY_G: 'g', ecodes.KEY_H: 'h',
-    ecodes.KEY_I: 'i', ecodes.KEY_J: 'j', ecodes.KEY_K: 'k',
-    ecodes.KEY_L: 'l', ecodes.KEY_M: 'm', ecodes.KEY_N: 'n',
-    ecodes.KEY_O: 'o', ecodes.KEY_P: 'p', ecodes.KEY_Q: 'q',
-    ecodes.KEY_R: 'r', ecodes.KEY_S: 's', ecodes.KEY_T: 't',
-    ecodes.KEY_U: 'u', ecodes.KEY_V: 'v', ecodes.KEY_W: 'w',
-    ecodes.KEY_X: 'x', ecodes.KEY_Y: 'y', ecodes.KEY_Z: 'z',
-    ecodes.KEY_MINUS: '-', ecodes.KEY_EQUAL: '=',
-    ecodes.KEY_SEMICOLON: ';', ecodes.KEY_APOSTROPHE: "'",
-    ecodes.KEY_COMMA: ',', ecodes.KEY_DOT: '.', ecodes.KEY_SLASH: '/',
-    ecodes.KEY_BACKSLASH: '\\', ecodes.KEY_SPACE: ' ',
-    ecodes.KEY_LEFTBRACE: '[', ecodes.KEY_RIGHTBRACE: ']',
-}
-
-SHIFT_KEYS = {
-    ecodes.KEY_MINUS: '_', ecodes.KEY_EQUAL: '+',
-    ecodes.KEY_1: '!', ecodes.KEY_2: '@', ecodes.KEY_3: '#',
-    ecodes.KEY_4: '$', ecodes.KEY_5: '%', ecodes.KEY_6: '^',
-    ecodes.KEY_7: '&', ecodes.KEY_8: '*', ecodes.KEY_9: '(',
-    ecodes.KEY_0: ')',
-}
+os.makedirs(VIDEO_DIR, exist_ok=True)
 
 
-class GPIOController:
+class AccessController:
     def __init__(self):
-        self.initialized = False
+        self.running = True
+        self._last_scan = {}
+        self._scan_lock = threading.Lock()
+        self.reader_names = []
+        self.last_scan_at = None
+        self.last_scan_result = None
+        self._cpu_prev = None
+        
         if GPIO_AVAILABLE:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
+            GPIO.setup(RELAY_ENTRADA, GPIO.OUT, initial=GPIO.HIGH)
+            GPIO.setup(RELAY_SALIDA, GPIO.OUT, initial=GPIO.HIGH)
+            logger.info("GPIO inicializado")
+        
+        # Ping thread
+        self.ping_thread = threading.Thread(target=self._ping_loop, daemon=True)
+        self.ping_thread.start()
+    
+    # ==================== MONITOR / TELEMETRIA ====================
+
+    def _local_ip(self):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.connect(("8.8.8.8", 80))
+                return sock.getsockname()[0]
+        except OSError:
+            return None
+
+    def _read_file(self, path):
+        try:
+            with open(path) as f:
+                return f.read()
+        except OSError:
+            return None
+
+    def _cpu_temp(self):
+        raw = self._read_file('/sys/class/thermal/thermal_zone0/temp')
+        return round(int(raw) / 1000, 1) if raw and raw.strip().isdigit() else None
+
+    def _cpu_usage(self):
+        raw = self._read_file('/proc/stat')
+        if not raw:
+            return None
+        vals = [int(v) for v in raw.splitlines()[0].split()[1:]]
+        idle, total = vals[3] + vals[4], sum(vals)
+        prev, self._cpu_prev = self._cpu_prev, (idle, total)
+        if not prev or total == prev[1]:
+            return None
+        return round(100 * (1 - (idle - prev[0]) / (total - prev[1])), 1)
+
+    def _memory_usage(self):
+        raw = self._read_file('/proc/meminfo')
+        if not raw:
+            return None
+        info = {line.split(':')[0]: int(line.split()[1]) for line in raw.splitlines() if len(line.split()) > 1}
+        total, avail = info.get('MemTotal'), info.get('MemAvailable')
+        return round(100 * (1 - avail / total), 1) if total and avail is not None else None
+
+    def _disk_usage(self):
+        usage = shutil.disk_usage('/')
+        return round(100 * usage.used / usage.total, 1)
+
+    def _uptime(self):
+        raw = self._read_file('/proc/uptime')
+        return int(float(raw.split()[0])) if raw else None
+
+    def _wifi_signal(self):
+        raw = self._read_file('/proc/net/wireless')
+        if not raw:
+            return None
+        lines = raw.strip().splitlines()[2:]
+        if not lines:
+            return None
+        try:
+            return int(float(lines[0].split()[3].rstrip('.')))
+        except (IndexError, ValueError):
+            return None
+
+    def _camera(self):
+        dev = VIDEO_DEVICE or _auto_detect_video_device()
+        return dev if dev and os.path.exists(dev) else None
+
+    def _telemetry(self):
+        return {
+            "gym_token": GYM_TOKEN,
+            "local_ip": self._local_ip(),
+            "hostname": socket.gethostname(),
+            "cpu_temp": self._cpu_temp(),
+            "cpu_usage": self._cpu_usage(),
+            "memory_usage": self._memory_usage(),
+            "disk_usage": self._disk_usage(),
+            "uptime": self._uptime(),
+            "wifi_signal": self._wifi_signal(),
+            "software_version": SOFTWARE_VERSION,
+            "qr_readers": self.reader_names,
+            "camera": self._camera(),
+            "last_scan_at": self.last_scan_at,
+            "last_scan_result": self.last_scan_result,
+        }
+
+    def _ping_loop(self):
+        while self.running:
             try:
-                GPIO.setmode(GPIO.BCM)
-                GPIO.setwarnings(False)
-                GPIO.setup(RELAY_ENTRADA, GPIO.OUT, initial=GPIO.HIGH)
-                GPIO.setup(RELAY_SALIDA, GPIO.OUT, initial=GPIO.HIGH)
-                self.initialized = True
-                logger.info(f"GPIO inicializado - ENTRADA: pin {RELAY_ENTRADA}, SALIDA: pin {RELAY_SALIDA}")
+                r = requests.post(f"{SERVER_URL}/api/devices/{DEVICE_ID}/heartbeat", json=self._telemetry(), timeout=8)
+                if r.status_code in (404, 405) and 'no encontrado' not in r.text.lower():
+                    # Servidor antiguo sin /heartbeat
+                    requests.post(f"{SERVER_URL}/api/devices/{DEVICE_ID}/ping", params={"gym_token": GYM_TOKEN}, timeout=5)
+                elif r.ok and r.json().get("command"):
+                    data = r.json()
+                    threading.Thread(target=self._run_command, args=(data["command_id"], data["command"]), daemon=True).start()
             except Exception as e:
-                logger.error(f"Error inicializando GPIO: {e}")
+                logger.debug(f"Heartbeat fallido: {e}")
+            time.sleep(HEARTBEAT_SECONDS)
+
+    def _report_command(self, command_id, success, output):
+        try:
+            requests.post(
+                f"{SERVER_URL}/api/devices/{DEVICE_ID}/command-result",
+                json={"gym_token": GYM_TOKEN, "command_id": command_id, "success": success, "output": output},
+                timeout=8,
+            )
+        except Exception as e:
+            logger.error(f"No se pudo reportar resultado de comando: {e}")
+
+    def _run_command(self, command_id, command):
+        logger.info(f"Comando remoto recibido: {command}")
+        try:
+            if command == 'open_entrada':
+                self.abrir_torno('entrada')
+                self._report_command(command_id, True, "Torno ENTRADA abierto")
+            elif command == 'open_salida':
+                self.abrir_torno('salida')
+                self._report_command(command_id, True, "Torno SALIDA abierto")
+            elif command == 'test_video':
+                filepath = f"{VIDEO_DIR}/test_{int(time.time())}.mp4"
+                error = self._record_clip(filepath)
+                if error:
+                    self._report_command(command_id, False, error)
+                else:
+                    size = os.path.getsize(filepath)
+                    os.remove(filepath)
+                    self._report_command(command_id, True, f"Video de {VIDEO_DURATION}s grabado OK ({size // 1024} KB)")
+            elif command == 'restart_service':
+                self._report_command(command_id, True, f"Reiniciando servicio {SERVICE_NAME}...")
+                subprocess.run(['sudo', 'systemctl', 'restart', SERVICE_NAME], timeout=30)
+            elif command == 'reboot':
+                self._report_command(command_id, True, "Reiniciando Raspberry...")
+                subprocess.run(['sudo', 'reboot'], timeout=30)
+            else:
+                self._report_command(command_id, False, f"Comando desconocido: {command}")
+        except Exception as e:
+            logger.error(f"Error ejecutando comando {command}: {e}")
+            self._report_command(command_id, False, f"Error: {e}")
 
     def abrir_torno(self, direccion):
         pin = RELAY_ENTRADA if direccion == 'entrada' else RELAY_SALIDA
-        nombre = direccion.upper()
-        logger.info(f"Abriendo torno {nombre} - GPIO pin {pin}")
-        if self.initialized:
+        nombre = "ENTRADA" if direccion == 'entrada' else "SALIDA"
+        logger.info(f"Abriendo torno {nombre}")
+        if GPIO_AVAILABLE:
             GPIO.output(pin, GPIO.LOW)
             time.sleep(TIEMPO_APERTURA)
             GPIO.output(pin, GPIO.HIGH)
-            logger.info(f"Torno {nombre} cerrado")
         else:
-            logger.info(f"[SIMULACION] Torno {nombre} pin {pin} abierto por {TIEMPO_APERTURA}s")
             time.sleep(TIEMPO_APERTURA)
-
-    def cleanup(self):
-        if self.initialized:
-            GPIO.cleanup()
-
-
-class GymAccessClient:
-    def __init__(self):
-        self.api_url = f"{SERVER_URL.rstrip('/')}/api"
-
-    def validar_qr(self, qr_code, direccion):
+        logger.info(f"Torno {nombre} cerrado")
+    
+    def _record_clip(self, filepath):
+        """Graba VIDEO_DURATION segundos en filepath. Devuelve mensaje de error o None."""
+        video_dev = VIDEO_DEVICE or _auto_detect_video_device()
+        if not video_dev or not os.path.exists(video_dev):
+            available = os.popen('ls /dev/video* 2>/dev/null').read().strip() or 'NINGUNO'
+            return f"Camara no encontrada. VIDEO_DEVICE='{VIDEO_DEVICE}'. Dispositivos: {available}"
+        cmd = [
+            'ffmpeg', '-y', '-f', 'v4l2', '-video_size', '640x480', '-framerate', '15',
+            '-i', video_dev, '-t', str(VIDEO_DURATION),
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', filepath
+        ]
+        logger.info(f"Grabando video ({video_dev}): {filepath}")
         try:
-            qr_code_clean = qr_code.strip().replace('\n', '').replace('\r', '').replace('\x00', '')
-            if qr_code_clean != qr_code:
-                logger.info(f"QR limpiado: {len(qr_code)} -> {len(qr_code_clean)} chars")
+            result = subprocess.run(cmd, capture_output=True, timeout=VIDEO_DURATION + 5)
+        except subprocess.TimeoutExpired:
+            return "Timeout grabando video"
+        if result.returncode != 0:
+            return f"Error ffmpeg en {video_dev}: {result.stderr.decode()[-300:]}"
+        return None
 
+    def grabar_video(self, access_log_id):
+        """Graba 4 segundos de video y lo sube al servidor en background."""
+        def _record_and_upload():
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filepath = f"{VIDEO_DIR}/{access_log_id}_{timestamp}.mp4"
+
+            try:
+                error = self._record_clip(filepath)
+                if error:
+                    logger.error(error)
+                    return
+
+                # Upload to server
+                logger.info(f"Subiendo video ({os.path.getsize(filepath)} bytes)...")
+                with open(filepath, 'rb') as f:
+                    response = requests.post(
+                        f"{SERVER_URL}/api/access/video",
+                        data={
+                            'access_log_id': access_log_id,
+                            'gym_token': GYM_TOKEN
+                        },
+                        files={'video': ('clip.mp4', f, 'video/mp4')},
+                        timeout=30
+                    )
+                
+                if response.status_code == 200:
+                    logger.info("Video subido correctamente")
+                else:
+                    logger.error(f"Error al subir video: {response.status_code} {response.text[:100]}")
+                
+            except subprocess.TimeoutExpired:
+                logger.error("Timeout grabando video")
+            except Exception as e:
+                logger.error(f"Error en grabacion: {e}")
+            finally:
+                # Clean up local file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+        
+        # Run in background thread to not block QR scanning
+        thread = threading.Thread(target=_record_and_upload, daemon=True)
+        thread.start()
+    
+    def validar_qr(self, qr_code, forced_direction="auto"):
+        try:
             response = requests.post(
-                f"{self.api_url}/access/validate",
+                f"{SERVER_URL}/api/access/validate",
                 json={
-                    "qr_code": qr_code_clean,
+                    "qr_code": qr_code,
                     "gym_token": GYM_TOKEN,
-                    "direction": direccion
+                    "direction": forced_direction
                 },
                 timeout=10
             )
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"valid": False, "reason": f"Error {response.status_code}"}
-        except requests.exceptions.Timeout:
-            return {"valid": False, "reason": "Timeout"}
-        except requests.exceptions.ConnectionError:
-            return {"valid": False, "reason": "Sin conexion"}
+            return response.json()
         except Exception as e:
-            return {"valid": False, "reason": str(e)}
-
-    def ping(self):
-        try:
-            response = requests.post(
-                f"{self.api_url}/devices/{DEVICE_ID}/ping",
-                params={"gym_token": GYM_TOKEN},
-                timeout=5
-            )
-            return response.status_code == 200
-        except Exception:
-            return False
-
-
-def find_scanners():
-    scanners = []
-    for path in evdev.list_devices():
-        dev = evdev.InputDevice(path)
-        if 'MEGAHUNT' in dev.name.upper() or 'HID' in dev.name.upper():
-            if 'Keyboard' in dev.name:
-                scanners.append(dev)
-                logger.info(f"Lector encontrado: {dev.path} - {dev.name} (phys: {dev.phys})")
-    return scanners
-
-
-def load_scanner_map():
-    """Load saved scanner-to-direction mapping"""
-    if os.path.exists(SCANNER_MAP_FILE):
-        try:
-            with open(SCANNER_MAP_FILE, 'r') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return None
-
-
-def save_scanner_map(mapping):
-    """Save scanner-to-direction mapping"""
-    with open(SCANNER_MAP_FILE, 'w') as f:
-        json.dump(mapping, f, indent=2)
-    logger.info(f"Mapa de lectores guardado en {SCANNER_MAP_FILE}")
-
-
-def assign_scanners(scanners):
-    """Assign scanners to directions using saved physical USB mapping"""
-    scanner_map = load_scanner_map()
+            logger.error(f"Error: {e}")
+            return {"valid": False, "reason": "Error de conexion"}
     
-    if scanner_map:
-        # Try to match by physical USB path
-        entrada_dev = None
-        salida_dev = None
+    def procesar_qr(self, qr_code, forced_direction="auto"):
+        if not qr_code:
+            return
         
-        for scanner in scanners:
-            phys = scanner.phys
-            if phys == scanner_map.get("entrada_phys"):
-                entrada_dev = scanner
-                logger.info(f"ENTRADA asignado por USB: {scanner.path} (phys: {phys})")
-            elif phys == scanner_map.get("salida_phys"):
-                salida_dev = scanner
-                logger.info(f"SALIDA asignado por USB: {scanner.path} (phys: {phys})")
+        with self._scan_lock:
+            ahora = time.time()
+            if ahora - self._last_scan.get(qr_code, 0) < DEBOUNCE_SEGUNDOS:
+                logger.info(f"Doble lectura local ignorada ({forced_direction})")
+                return
+            self._last_scan = {k: v for k, v in self._last_scan.items() if ahora - v < DEBOUNCE_SEGUNDOS}
+            self._last_scan[qr_code] = ahora
         
-        if entrada_dev and salida_dev:
-            return entrada_dev, salida_dev
+        logger.info(f"QR escaneado ({forced_direction}): {qr_code[:20]}...")
+        resultado = self.validar_qr(qr_code, forced_direction)
+        
+        self.last_scan_at = datetime.now().isoformat(timespec='seconds')
+        self.last_scan_result = (
+            f"{resultado.get('member_name') or resultado.get('guest_name') or 'Socio'} - {resultado.get('direction', '')}"
+            if resultado.get('valid') else f"DENEGADO: {resultado.get('reason', 'Desconocido')}"
+        )
+        
+        if resultado.get('duplicate'):
+            logger.info(f"Doble lectura ignorada por servidor: {resultado.get('member_name', '')}")
+            return
+        
+        if resultado.get('valid'):
+            direction = resultado.get('direction', forced_direction if forced_direction != 'auto' else 'entrada')
+            
+            if resultado.get('is_guest'):
+                nombre = resultado.get('guest_name', 'Invitado')
+                print(f"\n  INVITADO: {nombre}")
+                print(f"   Invitado de: {resultado.get('invited_by', '')}\n")
+            else:
+                nombre = resultado.get('member_name', 'Socio')
+                print(f"\n  BIENVENIDO: {nombre} ({direction})\n")
+            
+            self.abrir_torno(direction)
+            
+            # GRABAR VIDEO SOLO EN ENTRADAS
+            if direction == 'entrada' and resultado.get('access_log_id'):
+                self.grabar_video(resultado['access_log_id'])
         else:
-            logger.warning("No se encontro mapeo USB guardado, usando calibracion...")
+            razon = resultado.get('reason', 'Desconocido')
+            logger.warning(f"DENEGADO: {razon}")
+            print(f"\n  ACCESO DENEGADO: {razon}\n")
     
-    # No saved mapping - use default order and save
-    if len(scanners) >= 2:
-        mapping = {
-            "entrada_phys": scanners[0].phys,
-            "entrada_path": scanners[0].path,
-            "salida_phys": scanners[1].phys,
-            "salida_path": scanners[1].path,
+    def _find_qr_reader_device(self):
+        """Busca el primer dispositivo de entrada del lector QR USB (compatibilidad)."""
+        devices = self._find_all_qr_readers()
+        return devices[0] if devices else None
+
+    def _find_all_qr_readers(self):
+        """Busca TODOS los lectores QR USB conectados."""
+        from evdev import InputDevice, list_devices
+        found = []
+        for dev_path in list_devices():
+            try:
+                d = InputDevice(dev_path)
+                name_lower = d.name.lower()
+                if 'qr' in name_lower or 'barcode' in name_lower or 'scanner' in name_lower or 'hid' in name_lower or 'keyboard' in name_lower:
+                    if d.name != 'gpio-keys':
+                        logger.info(f"Lector encontrado: {d.name} ({dev_path})")
+                        found.append(d)
+            except Exception:
+                continue
+        # Ordenar por path para que el orden sea estable entre reinicios
+        found.sort(key=lambda dev: dev.path)
+        return found
+
+    def _read_qr_from_device(self, device):
+        """Lee un QR completo del dispositivo USB hasta encontrar ENTER."""
+        from evdev import categorize, ecodes, KeyEvent
+        # Mapa keycodes -> caracteres
+        keymap_lower = {
+            'KEY_0': '0', 'KEY_1': '1', 'KEY_2': '2', 'KEY_3': '3', 'KEY_4': '4',
+            'KEY_5': '5', 'KEY_6': '6', 'KEY_7': '7', 'KEY_8': '8', 'KEY_9': '9',
+            'KEY_A': 'a', 'KEY_B': 'b', 'KEY_C': 'c', 'KEY_D': 'd', 'KEY_E': 'e',
+            'KEY_F': 'f', 'KEY_G': 'g', 'KEY_H': 'h', 'KEY_I': 'i', 'KEY_J': 'j',
+            'KEY_K': 'k', 'KEY_L': 'l', 'KEY_M': 'm', 'KEY_N': 'n', 'KEY_O': 'o',
+            'KEY_P': 'p', 'KEY_Q': 'q', 'KEY_R': 'r', 'KEY_S': 's', 'KEY_T': 't',
+            'KEY_U': 'u', 'KEY_V': 'v', 'KEY_W': 'w', 'KEY_X': 'x', 'KEY_Y': 'y',
+            'KEY_Z': 'z',
+            'KEY_MINUS': '-', 'KEY_DOT': '.', 'KEY_SLASH': '/', 'KEY_SEMICOLON': ';',
+            'KEY_APOSTROPHE': "'", 'KEY_COMMA': ',', 'KEY_SPACE': ' ',
         }
-        save_scanner_map(mapping)
-        logger.info(f"Mapa inicial creado: ENTRADA={scanners[0].path}, SALIDA={scanners[1].path}")
-        return scanners[0], scanners[1]
-    elif len(scanners) == 1:
-        return scanners[0], None
-    return None, None
+        keymap_upper = {
+            'KEY_0': ')', 'KEY_1': '!', 'KEY_2': '@', 'KEY_3': '#', 'KEY_4': '$',
+            'KEY_5': '%', 'KEY_6': '^', 'KEY_7': '&', 'KEY_8': '*', 'KEY_9': '(',
+            'KEY_A': 'A', 'KEY_B': 'B', 'KEY_C': 'C', 'KEY_D': 'D', 'KEY_E': 'E',
+            'KEY_F': 'F', 'KEY_G': 'G', 'KEY_H': 'H', 'KEY_I': 'I', 'KEY_J': 'J',
+            'KEY_K': 'K', 'KEY_L': 'L', 'KEY_M': 'M', 'KEY_N': 'N', 'KEY_O': 'O',
+            'KEY_P': 'P', 'KEY_Q': 'Q', 'KEY_R': 'R', 'KEY_S': 'S', 'KEY_T': 'T',
+            'KEY_U': 'U', 'KEY_V': 'V', 'KEY_W': 'W', 'KEY_X': 'X', 'KEY_Y': 'Y',
+            'KEY_Z': 'Z',
+        }
+        buffer = ""
+        shift_held = False
+        # Solo intentar grab si aun no esta grabbed (evita warning en reinicios)
+        if not getattr(device, '_gym24_grabbed', False):
+            try:
+                device.grab()
+                device._gym24_grabbed = True
+            except OSError as e:
+                if e.errno != 16:  # Ignorar EBUSY (ya grabbed)
+                    logger.warning(f"No se pudo grab del dispositivo: {e}")
+            except Exception as e:
+                logger.warning(f"No se pudo grab del dispositivo: {e}")
 
+        for event in device.read_loop():
+            if event.type == ecodes.EV_KEY:
+                key_event = categorize(event)
+                if key_event.keystate == KeyEvent.key_down:
+                    if key_event.keycode in ('KEY_LEFTSHIFT', 'KEY_RIGHTSHIFT'):
+                        shift_held = True
+                    elif key_event.keycode == 'KEY_ENTER':
+                        result = buffer.strip()
+                        buffer = ""
+                        if result:
+                            return result
+                    else:
+                        key_str = key_event.keycode if isinstance(key_event.keycode, str) else key_event.keycode[0]
+                        char_map = keymap_upper if shift_held else keymap_lower
+                        if key_str in char_map:
+                            buffer += char_map[key_str]
+                elif key_event.keystate == KeyEvent.key_up:
+                    if key_event.keycode in ('KEY_LEFTSHIFT', 'KEY_RIGHTSHIFT'):
+                        shift_held = False
+        return None
 
-def calibrate(scanners):
-    """Interactive calibration - assigns scanners to directions"""
-    print("\n" + "=" * 50)
-    print("   CALIBRACION DE LECTORES")
-    print("=" * 50)
-    print(f"\nSe encontraron {len(scanners)} lectores:")
-    for i, s in enumerate(scanners):
-        print(f"  {i+1}. {s.path} - {s.name} (phys: {s.phys})")
-    
-    print("\nEscanea un QR en el lector de ENTRADA...")
-    
-    # Wait for a scan on any reader
-    import select
-    devices = {s.fd: s for s in scanners}
-    
-    while True:
-        r, w, x = select.select(devices.keys(), [], [], 10)
-        if not r:
-            print("Timeout. Intentando de nuevo...")
-            continue
-        for fd in r:
-            dev = devices[fd]
-            for event in dev.read():
-                if event.type == ecodes.EV_KEY:
-                    key_event = evdev.categorize(event)
-                    if key_event.keystate == 1 and key_event.scancode == ecodes.KEY_ENTER:
-                        entrada_dev = dev
-                        salida_dev = [s for s in scanners if s != dev][0] if len(scanners) > 1 else None
-                        
-                        mapping = {
-                            "entrada_phys": entrada_dev.phys,
-                            "entrada_path": entrada_dev.path,
-                        }
-                        if salida_dev:
-                            mapping["salida_phys"] = salida_dev.phys
-                            mapping["salida_path"] = salida_dev.path
-                        
-                        save_scanner_map(mapping)
-                        print(f"\n ENTRADA = {entrada_dev.path} (phys: {entrada_dev.phys})")
-                        if salida_dev:
-                            print(f" SALIDA  = {salida_dev.path} (phys: {salida_dev.phys})")
-                        print("\nCalibracion completada! Reinicia el servicio:")
-                        print("  sudo systemctl restart gymaccess")
-                        return
+    def _reader_loop(self, device, forced_direction):
+        """Loop dedicado a leer de un lector y procesar con direccion forzada."""
+        logger.info(f"Thread iniciado: lector '{device.name}' -> {forced_direction.upper()}")
+        try:
+            while self.running:
+                qr_code = self._read_qr_from_device(device)
+                if qr_code:
+                    self.procesar_qr(qr_code, forced_direction)
+        except Exception as e:
+            logger.error(f"Error en lector {device.name}: {e}")
 
+    def run(self):
+        # Detectar camara (env var o auto)
+        active_video = VIDEO_DEVICE or _auto_detect_video_device()
+        camera_status = active_video if active_video and os.path.exists(active_video) else "NO DETECTADA"
 
-def read_scanner(device, direccion, gpio, client):
-    logger.info(f"Escuchando {direccion}: {device.path} (phys: {device.phys})")
-    buffer = ""
-    shift_pressed = False
+        print("\n" + "="*50)
+        print("   GYM24 - SISTEMA DE CONTROL DE ACCESO")
+        print("   + GRABACION DE VIDEO EN ENTRADAS")
+        print("="*50)
+        print(f"   Servidor: {SERVER_URL}")
+        print(f"   Camara: {camera_status}")
+        print(f"   Duracion clip: {VIDEO_DURATION}s")
+        print("="*50)
+        logger.info(f"Iniciando: Server={SERVER_URL} Device={DEVICE_ID} Camera={camera_status}")
 
-    try:
-        device.grab()
-    except Exception:
-        logger.warning(f"No se pudo tomar control exclusivo de {device.path}")
+        # Buscar TODOS los lectores conectados
+        devices = []
+        try:
+            devices = self._find_all_qr_readers()
+        except ImportError:
+            logger.warning("evdev no instalado, usando modo stdin (manual)")
 
-    for event in device.read_loop():
-        if event.type != ecodes.EV_KEY:
-            continue
+        self.reader_names = [f"{d.name} ({d.path})" for d in devices[:2]]
 
-        key_event = evdev.categorize(event)
+        if devices:
+            # 1er lector (path mas bajo) = ENTRADA
+            # 2do lector = SALIDA
+            # Si hay solo 1, hace ENTRADA con direccion auto (servidor decide)
+            assignments = []
+            if len(devices) == 1:
+                assignments.append((devices[0], "auto"))
+                print(f"   Lector unico: {devices[0].name} -> ENTRADA/SALIDA auto")
+            else:
+                assignments.append((devices[0], "entrada"))
+                assignments.append((devices[1], "salida"))
+                print(f"   Lector ENTRADA: {devices[0].name}")
+                print(f"   Lector SALIDA:  {devices[1].name}")
+                if len(devices) > 2:
+                    print(f"   (Ignorando {len(devices) - 2} lectores adicionales)")
+            print("="*50)
+            print("   Esperando codigos QR...")
+            print("="*50 + "\n")
+            logger.info(f"Modo USB activo - {len(assignments)} lectores")
 
-        if key_event.keycode in ('KEY_LEFTSHIFT', 'KEY_RIGHTSHIFT'):
-            shift_pressed = (key_event.keystate == 1)
-            continue
+            threads = []
+            for device, direction in assignments:
+                t = threading.Thread(
+                    target=self._reader_loop,
+                    args=(device, direction),
+                    daemon=True
+                )
+                t.start()
+                threads.append(t)
 
-        if key_event.keystate != 1:
-            continue
-
-        if key_event.scancode == ecodes.KEY_ENTER:
-            if buffer:
-                code = buffer.strip()
-                buffer = ""
-                logger.info(f"[{direccion.upper()}] QR: {code[:20]}...")
-
-                resultado = client.validar_qr(code, direccion)
-                if resultado.get('valid'):
-                    nombre = resultado.get('member_name', 'Socio')
-                    real_dir = resultado.get('direction', direccion)
-                    logger.info(f"ACCESO PERMITIDO: {nombre} ({real_dir})")
-                    print(f"\nBienvenido, {nombre}! [{real_dir.upper()}]\n")
-                    threading.Thread(target=gpio.abrir_torno, args=(direccion,)).start()
-                else:
-                    razon = resultado.get('reason', 'Desconocido')
-                    logger.warning(f"ACCESO DENEGADO: {razon} ({direccion})")
-                    print(f"\nAcceso denegado: {razon} [{direccion.upper()}]\n")
+            try:
+                while self.running:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                print("\nCerrando...")
+                self.running = False
+            finally:
+                if GPIO_AVAILABLE:
+                    GPIO.cleanup()
         else:
-            if shift_pressed and key_event.scancode in SHIFT_KEYS:
-                buffer += SHIFT_KEYS[key_event.scancode]
-            elif key_event.scancode in KEYS:
-                char = KEYS[key_event.scancode]
-                if shift_pressed and char.isalpha():
-                    char = char.upper()
-                buffer += char
+            # Fallback: leer de stdin (modo manual/desarrollo)
+            print("   Lector USB no detectado - modo stdin manual")
+            print("   Esperando codigos QR...")
+            print("="*50 + "\n")
+            logger.warning("Sin lector USB detectado - usando stdin")
+            try:
+                while self.running:
+                    try:
+                        qr_code = input().strip()
+                        if qr_code:
+                            self.procesar_qr(qr_code)
+                    except EOFError:
+                        logger.warning("stdin cerrado - esperando 30s")
+                        time.sleep(30)
+            except KeyboardInterrupt:
+                print("\nCerrando...")
+            finally:
+                if GPIO_AVAILABLE:
+                    GPIO.cleanup()
 
-
-def ping_loop(client):
-    while True:
-        client.ping()
-        time.sleep(PING_INTERVAL)
-
-
-def main():
-    if GYM_TOKEN == 'TU_TOKEN_AQUI':
-        logger.error("Configura GYM_TOKEN en .env")
-        sys.exit(1)
-    if DEVICE_ID == 'TU_DEVICE_ID':
-        logger.error("Configura DEVICE_ID en .env")
-        sys.exit(1)
-
-    gpio = GPIOController()
-    client = GymAccessClient()
-    scanners = find_scanners()
-
-    if len(scanners) == 0:
-        logger.error("No se encontraron lectores QR USB")
-        sys.exit(1)
-
-    # Calibration mode
-    if '--calibrar' in sys.argv or '--calibrate' in sys.argv:
-        calibrate(scanners)
-        return
-
-    # Assign scanners using saved mapping
-    entrada_dev, salida_dev = assign_scanners(scanners)
-
-    print("\n" + "=" * 40)
-    print("   SISTEMA DE ACCESO ACTIVO")
-    print(f"   {len(scanners)} lector(es) detectados")
-    if entrada_dev:
-        print(f"   ENTRADA: {entrada_dev.path}")
-    if salida_dev:
-        print(f"   SALIDA:  {salida_dev.path}")
-    print("   Escanea tu codigo QR")
-    print("=" * 40 + "\n")
-
-    threading.Thread(target=ping_loop, args=(client,), daemon=True).start()
-
-    threads = []
-    if entrada_dev:
-        t1 = threading.Thread(target=read_scanner, args=(entrada_dev, 'entrada', gpio, client), daemon=True)
-        t1.start()
-        threads.append(t1)
-    if salida_dev:
-        t2 = threading.Thread(target=read_scanner, args=(salida_dev, 'salida', gpio, client), daemon=True)
-        t2.start()
-        threads.append(t2)
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        logger.info("Cerrando sistema...")
-        gpio.cleanup()
 
 if __name__ == '__main__':
-    main()
+    if not GYM_TOKEN:
+        print("Error: Configura GYM_TOKEN en .env")
+        print("   Obten el token en: Panel Admin > Dispositivos")
+        sys.exit(1)
+    
+    controller = AccessController()
+    controller.run()

@@ -99,7 +99,7 @@ docker run -d \
 - PENDIENTE USUARIO: Save to GitHub + desplegar en VPS + copiar nuevo raspberry_access_control.py a cada Raspberry.
 
 ## Cambios Jun 2026 — Monitor RPi avanzado (Super Admin)
-- Raspberry (`raspberry_access_control.py` v2.1): heartbeat cada 20s a `/api/devices/{id}/heartbeat` con IP local, hostname, temp, CPU, RAM, disco, uptime, WiFi, lectores QR, cámara, último escaneo. Ejecuta comandos remotos y reporta resultado (`/command-result`). Env opcional `GYMACCESS_SERVICE_NAME` (default `gymaccess`).
+- Raspberry (`raspberry_access_control.py` v2.1): heartbeat cada 20s a `/api/devices/{id}/heartbeat` con IP local, hostname, temp, CPU, RAM, disco, uptime, WiFi, lectores QR, cámara, último escaneo. Ejecuta comandos remotos y reporta resultado (`/command-result`). Env opcional `GYMACCESS_SERVICE_NAME` (default `gym24-access`).
 - Comandos: reboot, restart_service, open_entrada, open_salida, test_video. Pendientes >10 min → expired.
 - Backend `device_management_routes.py`: heartbeat valida que el dispositivo pertenezca al gym del token; IP pública desde X-Forwarded-For; `/devices/status` incluye `recent_commands`.
 - Frontend `components/DeviceMonitorCard.js` + `AdminDeviceMonitor.js` (refresco 10s, métricas en rojo si alarma, confirmación para reinicios).

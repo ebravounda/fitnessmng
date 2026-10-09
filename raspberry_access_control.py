@@ -41,7 +41,7 @@ SERVER_URL = os.environ.get('GYMACCESS_SERVER_URL', 'https://api.gym24.app')
 GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
 DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
 VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
-SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gymaccess')
+SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gym24-access')
 SOFTWARE_VERSION = '2.1'
 HEARTBEAT_SECONDS = 20
 

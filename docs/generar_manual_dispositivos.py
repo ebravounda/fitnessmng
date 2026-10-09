@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "DispositivosGym24.pdf"
 PUBLIC_COPY = ROOT / "frontend/public/downloads/DispositivosGym24.pdf"
 LOGO = ROOT / "frontend/public/logo512.png"
-VERSION = "2.1"
+VERSION = "2.2"
 FECHA = "Junio 2026"
 API = "https://api.gym24.app"
 
@@ -98,7 +98,7 @@ def cover():
     story.append(Paragraph("Guía de aprovisionamiento de Raspberry Pi para control de acceso", ParagraphStyle("S", parent=BODY, fontSize=13, leading=17, alignment=TA_CENTER, textColor=colors.HexColor("#555555"))))
     story.append(Spacer(1, 25 * mm))
     meta = [["Documento", "DispositivosGym24"], ["Versión", VERSION], ["Fecha", FECHA],
-            ["Sistema", "Raspberry Pi 4/5 + Pi OS Lite 64-bit"], ["Script Pi", "raspberry_access_control.py v2.2"], ["Backend", API.replace("https://", "")]]
+            ["Sistema", "Raspberry Pi 4/5 + Pi OS Lite 64-bit"], ["Script Pi", "raspberry_access_control.py v2.4"], ["Backend", API.replace("https://", "")]]
     t = Table(meta, colWidths=[40 * mm, 80 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), ORANGE), ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
@@ -133,6 +133,8 @@ def toc():
         "Nueva variable opcional <font face='Courier'>GYMACCESS_SERVICE_NAME</font> y procedimiento de actualización con copia de seguridad.",
         "<b>v2.1 (script 2.2)</b>: con 2 lectores, <b>el lector donde se escanea decide</b> si es ENTRADA o SALIDA (ya no alterna). "
         "Nuevos ajustes <font face='Courier'>INVERTIR_LECTORES</font> e <font face='Courier'>INVERTIR_RELES</font> para corregir cables cruzados sin tocar el hardware.",
+        "<b>v2.2 (script 2.4)</b>: <b>apertura instantánea</b> (menos de 1 s). El admin y el staff del gimnasio tienen los botones "
+        "<b>Abrir entrada / Abrir salida</b> arriba en su Dashboard; cada apertura queda en Accesos como \"Apertura manual\" y cuenta en el aforo.",
     ])
     story.append(PageBreak())
 
@@ -206,7 +208,7 @@ def s7_to_s12():
     code("sudo mkdir -p /opt/gym24\ncd /opt/gym24")
     p("Descargar la última versión del script <b>desde el servidor Gym24</b>:")
     code(f"sudo curl -fsSL {API}/api/download/raspberry-py \\\n  -o /opt/gym24/raspberry_access_control.py\n\n"
-         "# Comprobar la version (debe mostrar 2.2 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py")
+         "# Comprobar la version (debe mostrar 2.4 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py")
     p("Crear el entorno virtual e instalar dependencias:")
     code("sudo python3 -m venv /opt/gym24/venv\nsudo /opt/gym24/venv/bin/pip install requests python-dotenv RPi.GPIO evdev")
 
@@ -275,8 +277,8 @@ sudo systemctl restart systemd-journald""")
          "Modo USB activo - 2 lectores\nThread iniciado: lector 'MEGAHUNT...' -> ENTRADA\nThread iniciado: lector 'MEGAHUNT...' -> SALIDA")
     h2("b) Monitor RPi (antes de 30 segundos)")
     bullets(["Entra como Super Admin -> <b>Monitor RPi</b>",
-             "La tarjeta del dispositivo debe mostrar <b>EN LINEA</b>, IP local, temperatura, lectores QR detectados, cámara y <b>Versión 2.2</b>",
-             "Si aparece el aviso \"script antiguo\", el script no es la versión 2.2: repite el paso 7"])
+             "La tarjeta del dispositivo debe mostrar <b>EN LINEA</b>, IP local, temperatura, lectores QR detectados, cámara y <b>Versión 2.4</b>",
+             "Si aparece el aviso \"script antiguo\", el script no es la versión 2.4: repite el paso 7"])
     h2("c) Prueba de funcionamiento desde el panel")
     table([
         ["Botón", "Resultado esperado (en menos de 20 s)"],
@@ -316,6 +318,10 @@ def s13_to_s15():
         ["Reiniciar servicio", "Reinicia gym24-access (~10 s sin control de acceso)", "Sí"],
         ["Reiniciar RPi", "Reinicia la Raspberry completa (~1 min sin control de acceso)", "Sí"],
     ], [35, 105, 30])
+    box("<b>Modo instantáneo (script 2.4+)</b>: la Raspberry mantiene una conexión abierta con el servidor, así que los comandos se ejecutan en "
+        "<b>menos de 1 segundo</b> (con scripts anteriores, hasta 20 s). El admin y el staff de cada gimnasio pueden abrir los tornos desde los botones "
+        "<b>Abrir entrada / Abrir salida</b> de su Dashboard: se ve \"Instantáneo\" junto al nombre del torno cuando este modo está activo. "
+        "Las aperturas manuales caducan a los 60 s si la Pi no está conectada (nunca se abre tarde).", NEW, "#E8F7EE", colors.HexColor("#0B6B3A"))
     p("Cada comando aparece en el historial de la tarjeta: <b>Pendiente</b> (esperando a la Pi) -> <b>Ejecutando</b> -> "
       "<b>OK</b> o <b>Error</b> con el mensaje. Si la Pi está offline, el comando espera hasta 10 minutos; después pasa a <b>Expirado</b> "
       "y no se ejecuta (así una Pi que vuelve tarde no abre el torno por sorpresa).")
@@ -334,7 +340,7 @@ def s13_to_s15():
     p("Si el script está en <font face='Courier'>/opt/gym24/</font> y el servicio es <font face='Courier'>gym24-access</font> (instalación estándar):")
     code(f"# 2. Copia de seguridad\nsudo cp /opt/gym24/raspberry_access_control.py \\\n  /opt/gym24/raspberry_access_control.py.bak\n\n"
          f"# 3. Descargar la nueva version\nsudo curl -fsSL {API}/api/download/raspberry-py \\\n  -o /opt/gym24/raspberry_access_control.py\n\n"
-         "# 4. Comprobar version (2.2 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py\n\n"
+         "# 4. Comprobar version (2.4 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py\n\n"
          "# 5. Reiniciar y revisar\nsudo systemctl restart gym24-access\nsleep 5\nsudo journalctl -u gym24-access -n 20 --no-pager")
     box("<b>Volver a la versión anterior</b> si algo falla:<br/>"
         "<font face='Courier'>sudo cp /opt/gym24/raspberry_access_control.py.bak /opt/gym24/raspberry_access_control.py<br/>sudo systemctl restart gym24-access</font>")
@@ -348,7 +354,7 @@ def s16_to_end():
         ("La Pi aparece OFFLINE en Monitor RPi",
          "curl https://api.gym24.app/api/\nsudo cat /opt/gym24/.env\nsudo journalctl -u gym24-access -n 50 --no-pager",
          "Comprueba Internet, que GYM_TOKEN y DEVICE_ID son correctos y que el dispositivo pertenece al mismo gimnasio que el token."),
-        ("Aviso \"script antiguo\" / Versión: Antigua", None, "La Pi ejecuta un script anterior a 2.2. Sigue el paso 15."),
+        ("Aviso \"script antiguo\" / Versión: Antigua", None, "La Pi ejecuta un script anterior a 2.4. Sigue el paso 15."),
         ("Los comandos quedan en Pendiente o Expirado", "sudo systemctl status gym24-access",
          "La Pi no está enviando señal. Si está OFFLINE, revisa red y servicio. Los comandos expiran a los 10 min."),
         ("\"Reiniciar servicio\" no hace nada", "systemctl list-units --type=service --all | grep -iE \"gym|access\"",

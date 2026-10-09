@@ -1,0 +1,26 @@
+{
+  "summary": "Tested the new gym-admin manual door-open feature (DoorControl) end-to-end. Backend: 9/9 pytest cases passed (GET /api/gym/doors as admin+staff; long-poll near-instant delivery; invalid direction 400; bad gym_token 401; exclusivity so a command is never delivered twice via heartbeat+wait; 60s expiration of unpicked manual commands; access_log + dashboard occupancy increment). Frontend (external preview URL, with a background Python Pi simulator long-polling the device): logged in as gym_admin -> DoorControl card renders at top of dashboard with door-row, mode shows 'Instantaneo', clicks on door-open-entrada and door-open-salida produce spinner -> 'Abierto' + Spanish toast within 0.80-0.84s. Admin Accesos page shows 'Apertura manual' badges (data-testid access-type-{id}) and the ocupacion counter reflects manual entries/exits. Staff (gym_manager) can also see and use the buttons (0.83s). Super admin (no gym_id) correctly does NOT render the door-control card. All leftover pending commands drained via the Pi simulator; no residual devices created.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iteration33_door_control.py",
+    "/app/test_reports/pytest/pytest_iteration33.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "device_management_routes.open_gym_door inserts the access_log BEFORE confirming command delivery. If the command later expires or fails the log remains counting toward aforo. Consider marking the access_log as 'pending'/'failed' when the command result is non-success, or deleting it on expiration.",
+    "_pop_pending_command is used by both long-poll and heartbeat and relies on find_one_and_update atomicity (good). However the sort by created_at string works correctly only while all created_at are ISO UTC strings - ensure no non-UTC writers exist elsewhere.",
+    "device_wait_command sleeps asyncio.sleep(0.3) in a busy loop - fine for a few devices but could be replaced by a change-stream / pubsub for scale.",
+    "DoorControl.handleOpen passes door.instant captured at click time; if the Pi disconnects between click and completion the 8s timeout may be too short - consider always using 25s and showing a quick skeleton toast if >3s elapsed.",
+    "Open endpoints only check role + gym ownership but there is no rate-limit; a tapped-twice admin could flood with manual access_logs. Debounce in UI + idempotency key would help.",
+    "No audit of 'created_by' name/email in access_log vs opened_by_name (both are set from admin.name/email, so basically duplicated)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration33_door_control.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100%"},
+  "test_credentials": "gymadmin.test@gym24.es / test1234, staff.test@gym24.es / test1234, info@gym24.es / admin123. Gym 33562209-fdcc-42df-9fa7-fb4a5939214c, device 002c930c-8505-4ece-810e-21472c98c727, gym api_token eOj7FRBkJe2gbE_TugB8gOJKSJYTWVYjnGomxwrIM2M.",
+  "seed_data_creation": "No devices created. ~6 manual access_log entries (Apertura manual) were created during testing in gym Bd Test; these are legitimate accesses counted in aforo per spec. All device_commands produced were delivered/executed; none left pending.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "To test the door-open flow start /tmp/pi_sim.py (requests GET /api/devices/{id}/commands/wait?gym_token=... and POSTs /command-result with success true) BEFORE triggering UI clicks or long-poll backend tests. Admin dashboard route is /admin (not /admin/dashboard). Measured open latency 0.80-0.84s via external URL - well within the 'instant' expectation.",
+  "rca of the issue": "N/A - no issues found."
+}

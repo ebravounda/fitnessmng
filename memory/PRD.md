@@ -111,6 +111,15 @@ docker run -d \
 - RESUELTO (script Pi 2.2): si la petición QR trae `device_id` (Pi >= 2.2) y direction entrada/salida -> manda el lector físico. Sin device_id (scripts antiguos) o 'auto' -> alterna como antes (needs_first_entry fuerza Entrada). Pi: `INVERTIR_LECTORES` / `INVERTIR_RELES` en .env; telemetría `invert_readers/invert_relays`. Test: `backend/tests/test_reader_direction.py`.
 - Coslada = FitnessPlace: logs sugieren lectores Y relés cruzados (pendiente que el usuario confirme con las 2 pruebas del Anexo 18).
 
+## Cambios Jun 2026 — Apertura instantánea (admin/staff) — script Pi 2.4
+- Long-poll `GET /api/devices/{id}/commands/wait?gym_token=` (25s, entrega atómica find_one_and_update; heartbeat comparte `_pop_pending_command`). Latencia medida ~0.6-0.9s.
+- `GET /api/gym/doors`, `POST /api/gym/doors/{id}/open` {direction}, `GET /api/gym/doors/commands/{id}` (roles super_admin/gym_admin/gym_manager). Apertura manual: comando con expires_at 60s + access_log `access_type=manual, is_manual=true` (cuenta en aforo).
+- Frontend: `components/DoorControl.js` arriba en AdminDashboard; badge "Apertura manual" en AdminAccess.
+- Pi 2.3: con 2 lectores el relé sigue al lector físico. Pi 2.4: `_command_loop` long-poll, aperturas reportan al activar relé.
+- Servidor: doble lectura solo bloquea mismo sentido (otro lector nunca se bloquea).
+- Coslada/FitnessPlace: INVERTIR_RELES=1 e INVERTIR_LECTORES=1 confirmados funcionando (20:39).
+- Manual DispositivosGym24 v2.2. Testing iteration_33: 100%.
+
 ### P0 (próxima sesión)
 - Ejecutar testing_agent_v3_fork para validar E2E backend + frontend
 - Re-subir logos de gyms (FitnessManager, MIXED Sport Center, Sala de Armas)

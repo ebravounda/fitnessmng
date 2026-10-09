@@ -95,6 +95,7 @@ async def create_member(member: MemberCreate, admin: dict = Depends(get_current_
     member_dict["status"] = "active"
     member_dict["gender"] = member.gender or "prefer_not_to_say"
     member_dict["created_at"] = datetime.now(timezone.utc).isoformat()
+    member_dict["needs_first_entry"] = True  # Primera marca sera siempre ENTRADA
     while await db.members.find_one({"code": member_dict["code"]}):
         member_dict["code"] = generate_member_code()
     await db.members.insert_one(member_dict)
@@ -129,6 +130,7 @@ async def register_member_public(member: MemberPublicRegister):
         "address": member.address,
         "city": member.city,
         "postal_code": member.postal_code,
+        "needs_first_entry": True,  # Primera marca sera siempre ENTRADA
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     while await db.members.find_one({"code": member_dict["code"]}):
@@ -856,7 +858,7 @@ async def assign_memberships_bulk(data: dict, admin: dict = Depends(get_current_
             
             try:
                 importe = float(importe_str) if importe_str else 0
-            except:
+            except (ValueError, TypeError):
                 importe = 0
 
             # Find member by code or email
@@ -897,7 +899,7 @@ async def assign_memberships_bulk(data: dict, admin: dict = Depends(get_current_
             try:
                 parts = fecha_hasta.split("/")
                 end_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
-            except:
+            except (IndexError, AttributeError):
                 errors.append(f"Fecha invalida: {fecha_hasta} ({info.get('nombre', '')})")
                 continue
 

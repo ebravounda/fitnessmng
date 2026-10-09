@@ -37,7 +37,11 @@ def test_reader_decides_direction():
         r = scan("salida", "pi-1")  # socio nuevo en lector SALIDA con Pi nueva -> manda el lector
         assert r["valid"] and r["direction"] == "salida"
         assert not db.members.find_one({"id": MID}).get("needs_first_entry")
-        assert scan("entrada", "pi-1").get("duplicate") is True  # doble lectura <10s
+        assert scan("salida", "pi-1").get("duplicate") is True  # doble lectura mismo lector <10s
+        r = scan("entrada", "pi-1")  # otro lector enseguida -> NO es doble lectura
+        assert r["direction"] == "entrada" and not r.get("duplicate")
+        age_last_log()
+        assert scan("salida", "pi-1")["direction"] == "salida"
         age_last_log()
         assert scan("salida", "pi-1")["direction"] == "salida"  # salida tras salida: manda el lector
         age_last_log()

@@ -241,12 +241,14 @@ async def validate_access(validation: AccessValidation):
         {"member_id": member["id"], "gym_id": gym["id"], "is_guest": {"$ne": True}},
         {"_id": 0}, sort=[("timestamp", -1)]
     )
-    if _is_duplicate_scan(last_log):
+    # Pi >= 2.2 con 2 lectores: manda el lector fisico donde se escaneo
+    reader_direction = validation.direction if validation.device_id and validation.direction in ("entrada", "salida") else None
+    # Doble lectura: solo si es el mismo sentido (escanear en el otro lector nunca se bloquea)
+    same_way = not reader_direction or (last_log and last_log.get("direction") == reader_direction)
+    if same_way and _is_duplicate_scan(last_log):
         logger.info(f"Doble lectura ignorada (QR) socio {member.get('code')}")
         return {"valid": True, "duplicate": True, "member_name": member["name"],
                 "member_code": member["code"], "direction": last_log.get("direction")}
-    # Pi >= 2.2 con 2 lectores: manda el lector fisico donde se escaneo
-    reader_direction = validation.direction if validation.device_id and validation.direction in ("entrada", "salida") else None
     if member.get("needs_first_entry"):
         await db.members.update_one({"id": member["id"]}, {"$unset": {"needs_first_entry": ""}})
     if reader_direction:

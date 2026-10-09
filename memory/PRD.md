@@ -105,6 +105,11 @@ docker run -d \
 - Frontend `components/DeviceMonitorCard.js` + `AdminDeviceMonitor.js` (refresco 10s, métricas en rojo si alarma, confirmación para reinicios).
 - Testing agent iteration_32: 100% backend/frontend.
 
+## Cambios Jun 2026 — Manual DispositivosGym24 v2.0
+- Generador persistente: `docs/generar_manual_dispositivos.py` (ReportLab) -> `/app/DispositivosGym24.pdf` + `frontend/public/downloads/DispositivosGym24.pdf` (https://gym24.app/downloads/DispositivosGym24.pdf).
+- Nuevas secciones: Monitor RPi y comandos, anti-doble lectura, actualizar Pi existente (backup/rollback), descarga del script vía `GET /api/download/raspberry-py` (sirve `backend/downloads/raspberry_access_control.py`, copia del script raíz — mantener sincronizada).
+- PENDIENTE decisión usuario: con QR el servidor alterna entrada/salida ignorando el lector físico (logs coslada: "QR escaneado (entrada)" -> "Abriendo torno SALIDA"). Propuesta: respetar dirección del lector cuando != auto.
+
 ### P0 (próxima sesión)
 - Ejecutar testing_agent_v3_fork para validar E2E backend + frontend
 - Re-subir logos de gyms (FitnessManager, MIXED Sport Center, Sala de Armas)

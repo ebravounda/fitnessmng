@@ -42,7 +42,7 @@ GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
 DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
 VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
 SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gym24-access')
-SOFTWARE_VERSION = '2.3'
+SOFTWARE_VERSION = '2.4'
 HEARTBEAT_SECONDS = 20
 _SI = ('1', 'true', 'si', 'yes')
 INVERTIR_LECTORES = os.environ.get('INVERTIR_LECTORES', '0').strip().lower() in _SI
@@ -102,6 +102,7 @@ class AccessController:
         # Ping thread
         self.ping_thread = threading.Thread(target=self._ping_loop, daemon=True)
         self.ping_thread.start()
+        threading.Thread(target=self._command_loop, daemon=True).start()
     
     # ==================== MONITOR / TELEMETRIA ====================
 
@@ -201,6 +202,26 @@ class AccessController:
                 logger.debug(f"Heartbeat fallido: {e}")
             time.sleep(HEARTBEAT_SECONDS)
 
+    def _command_loop(self):
+        """Conexion siempre abierta: el servidor responde al instante cuando hay un comando."""
+        while self.running:
+            try:
+                r = requests.get(
+                    f"{SERVER_URL}/api/devices/{DEVICE_ID}/commands/wait",
+                    params={"gym_token": GYM_TOKEN}, timeout=40,
+                )
+                if r.status_code == 404 and 'no encontrado' not in r.text.lower():
+                    logger.info("Servidor sin modo instantaneo; se usan comandos via heartbeat")
+                    return
+                if r.ok and r.json().get("command"):
+                    data = r.json()
+                    threading.Thread(target=self._run_command, args=(data["command_id"], data["command"]), daemon=True).start()
+                elif not r.ok:
+                    time.sleep(3)
+            except Exception as e:
+                logger.debug(f"Long-poll fallido: {e}")
+                time.sleep(3)
+
     def _report_command(self, command_id, success, output):
         try:
             requests.post(
@@ -214,12 +235,11 @@ class AccessController:
     def _run_command(self, command_id, command):
         logger.info(f"Comando remoto recibido: {command}")
         try:
-            if command == 'open_entrada':
-                self.abrir_torno('entrada')
-                self._report_command(command_id, True, "Torno ENTRADA abierto")
-            elif command == 'open_salida':
-                self.abrir_torno('salida')
-                self._report_command(command_id, True, "Torno SALIDA abierto")
+            if command in ('open_entrada', 'open_salida'):
+                direccion = command.split('_')[1]
+                # Reporta en cuanto se activa el rele (no espera los 3 s de apertura)
+                threading.Thread(target=self.abrir_torno, args=(direccion,), daemon=True).start()
+                self._report_command(command_id, True, f"Torno {direccion.upper()} abierto")
             elif command == 'test_video':
                 filepath = f"{VIDEO_DIR}/test_{int(time.time())}.mp4"
                 error = self._record_clip(filepath)

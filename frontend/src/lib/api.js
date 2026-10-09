@@ -144,6 +144,11 @@ export const getStripeConfig = (gymId) => axios.get(`${API}/gyms/${gymId}/stripe
 export const updateStripeConfig = (gymId, data) => axios.put(`${API}/gyms/${gymId}/stripe-config`, data);
 export const gymHasPayments = (gymId) => axios.get(`${API}/gyms/${gymId}/has-payments`);
 
+// Apertura manual de tornos (admin/staff del gimnasio)
+export const getGymDoors = () => axios.get(`${API}/gym/doors`);
+export const openGymDoor = (deviceId, direction) => axios.post(`${API}/gym/doors/${deviceId}/open`, { direction });
+export const getGymDoorCommand = (commandId) => axios.get(`${API}/gym/doors/commands/${commandId}`);
+
 // Validation (for Raspberry Pi - no auth needed)
 export const validateAccess = (data) => axios.post(`${API}/access/validate`, data);
 

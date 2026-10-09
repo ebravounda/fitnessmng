@@ -109,7 +109,7 @@ export default function AdminAccess() {
       'Socio': log.member_name || log.guest_name || '-',
       'Código': log.member_code || log.guest_code || '-',
       'Dirección': log.direction === 'entrada' ? 'Entrada' : 'Salida',
-      'Tipo': log.is_guest ? 'Invitado' : 'Socio',
+      'Tipo': log.is_manual ? 'Apertura manual' : log.is_guest ? 'Invitado' : 'Socio',
       'Válido': log.valid ? 'Sí' : 'No',
       'Video': log.video_id ? 'Sí' : 'No'
     }));
@@ -288,9 +288,9 @@ export default function AdminAccess() {
                     </td>
                     <td>
                       <span className={`text-xs px-2 py-0.5 rounded ${
-                        log.is_guest ? 'bg-purple-500/10 text-purple-400' : 'bg-zinc-800 text-zinc-400'
-                      }`}>
-                        {log.is_guest ? 'Invitado' : 'Socio'}
+                        log.is_manual ? 'bg-orange-500/10 text-orange-400' : log.is_guest ? 'bg-purple-500/10 text-purple-400' : 'bg-zinc-800 text-zinc-400'
+                      }`} data-testid={`access-type-${log.id}`}>
+                        {log.is_manual ? 'Apertura manual' : log.is_guest ? 'Invitado' : 'Socio'}
                       </span>
                     </td>
                     <td>

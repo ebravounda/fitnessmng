@@ -7,6 +7,7 @@ import {
   Users, TrendingUp, Calendar, DollarSign, 
   ArrowUpRight, Clock, AlertTriangle, Activity, LogIn, LogOut
 } from 'lucide-react';
+import { DoorControl } from '../../components/DoorControl';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function AdminDashboard() {
@@ -64,6 +65,8 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold tracking-tight mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>Dashboard</h1>
         <p style={{ color: 'var(--text-secondary)' }}>Bienvenido, {admin?.name}</p>
       </div>
+
+      <DoorControl />
 
       {/* Stats Grid - Redesigned cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

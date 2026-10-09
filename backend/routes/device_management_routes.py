@@ -1,9 +1,12 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Depends, Request
+from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 import uuid
 
 from database import db
-from auth import get_current_admin
+from auth import get_current_admin, check_role
 
 router = APIRouter(prefix="/api")
 
@@ -17,6 +20,9 @@ ALLOWED_COMMANDS = {
     "test_video": "Grabar video de prueba",
 }
 COMMAND_EXPIRE_MINUTES = 10
+MANUAL_OPEN_EXPIRE_SECONDS = 60  # una apertura manual tardia nunca se ejecuta
+LONG_POLL_SECONDS = 25
+GYM_STAFF_ROLES = ["super_admin", "gym_admin", "gym_manager"]
 TELEMETRY_FIELDS = [
     "local_ip", "hostname", "cpu_temp", "cpu_usage", "memory_usage", "disk_usage",
     "uptime", "wifi_signal", "software_version", "qr_readers", "camera",
@@ -39,11 +45,40 @@ async def _get_device_for_token(device_id: str, gym_token: str | None) -> dict:
 
 
 async def _expire_old_commands(device_id: str) -> None:
-    limit = (datetime.now(timezone.utc) - timedelta(minutes=COMMAND_EXPIRE_MINUTES)).isoformat()
+    now = datetime.now(timezone.utc)
+    limit = (now - timedelta(minutes=COMMAND_EXPIRE_MINUTES)).isoformat()
     await db.device_commands.update_many(
-        {"device_id": device_id, "status": "pending", "created_at": {"$lt": limit}},
+        {"device_id": device_id, "status": "pending",
+         "$or": [{"created_at": {"$lt": limit}}, {"expires_at": {"$lt": now.isoformat()}}]},
         {"$set": {"status": "expired", "output": "La Raspberry no recogio el comando a tiempo"}},
     )
+
+
+async def _pop_pending_command(device_id: str) -> dict | None:
+    """Entrega atomica: un comando nunca se ejecuta dos veces (heartbeat + long-poll)."""
+    await _expire_old_commands(device_id)
+    return await db.device_commands.find_one_and_update(
+        {"device_id": device_id, "status": "pending"},
+        {"$set": {"status": "delivered", "delivered_at": datetime.now(timezone.utc).isoformat()}},
+        sort=[("created_at", 1)], projection={"_id": 0},
+    )
+
+
+def _command_payload(cmd: dict | None) -> dict:
+    if not cmd:
+        return {"status": "ok", "command": None}
+    return {"status": "ok", "command": cmd["command"], "command_id": cmd["id"]}
+
+
+def _with_status(d: dict, now: datetime) -> dict:
+    d["computed_status"], d["seconds_since_ping"] = "offline", None
+    if d.get("last_ping"):
+        diff = (now - datetime.fromisoformat(d["last_ping"].replace("Z", "+00:00"))).total_seconds()
+        d["computed_status"] = "online" if diff < 120 else "offline"
+        d["seconds_since_ping"] = int(diff)
+    instant = d.get("instant_at")
+    d["instant"] = bool(instant) and (now - datetime.fromisoformat(instant)).total_seconds() < 60
+    return d
 
 
 @router.post("/devices/{device_id}/heartbeat")
@@ -56,16 +91,23 @@ async def device_heartbeat(device_id: str, request: Request):
     update = {"status": "online", "last_ping": now, "ip_address": public_ip}
     update.update({f: body.get(f) for f in TELEMETRY_FIELDS if f in body})
     await db.devices.update_one({"id": device_id}, {"$set": update})
-    await _expire_old_commands(device_id)
-    pending_cmd = await db.device_commands.find_one(
-        {"device_id": device_id, "status": "pending"}, {"_id": 0}, sort=[("created_at", 1)]
-    )
-    if not pending_cmd:
-        return {"status": "ok", "command": None}
-    await db.device_commands.update_one(
-        {"id": pending_cmd["id"]}, {"$set": {"status": "delivered", "delivered_at": now}}
-    )
-    return {"status": "ok", "command": pending_cmd["command"], "command_id": pending_cmd["id"]}
+    return _command_payload(await _pop_pending_command(device_id))
+
+
+@router.get("/devices/{device_id}/commands/wait")
+async def device_wait_command(device_id: str, gym_token: str):
+    """Long-poll (Pi >= 2.4): responde en cuanto hay un comando -> apertura casi instantanea."""
+    await _get_device_for_token(device_id, gym_token)
+    now = datetime.now(timezone.utc).isoformat()
+    await db.devices.update_one({"id": device_id}, {"$set": {"instant_at": now, "last_ping": now, "status": "online"}})
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + LONG_POLL_SECONDS
+    while loop.time() < deadline:
+        cmd = await _pop_pending_command(device_id)
+        if cmd:
+            return _command_payload(cmd)
+        await asyncio.sleep(0.3)
+    return _command_payload(None)
 
 
 @router.post("/devices/{device_id}/command-result")
@@ -119,6 +161,65 @@ async def get_device_commands(device_id: str, admin: dict = Depends(get_current_
     ).sort("created_at", -1).to_list(50)
     return commands
 
+class DoorOpenRequest(BaseModel):
+    direction: str
+
+
+@router.get("/gym/doors")
+async def get_gym_doors(admin: dict = Depends(get_current_admin)):
+    """Tornos (Raspberry) del gimnasio del admin/staff para apertura manual."""
+    check_role(admin, GYM_STAFF_ROLES)
+    if not admin.get("gym_id"):
+        return []
+    devices = await db.devices.find(
+        {"gym_id": admin["gym_id"], "active": {"$ne": False}},
+        {"_id": 0, "id": 1, "name": 1, "last_ping": 1, "instant_at": 1, "software_version": 1},
+    ).to_list(length=None)
+    now = datetime.now(timezone.utc)
+    return [_with_status(d, now) for d in devices]
+
+
+@router.post("/gym/doors/{device_id}/open")
+async def open_gym_door(device_id: str, req: DoorOpenRequest, admin: dict = Depends(get_current_admin)):
+    if req.direction not in ("entrada", "salida"):
+        raise HTTPException(status_code=400, detail="Direccion no valida")
+    device = await db.devices.find_one({"id": device_id, "active": {"$ne": False}}, {"_id": 0})
+    if not device:
+        raise HTTPException(status_code=404, detail="Dispositivo no encontrado")
+    check_role(admin, GYM_STAFF_ROLES, device.get("gym_id"))
+    now = datetime.now(timezone.utc)
+    who = admin.get("name") or admin.get("email", "")
+    cmd = {
+        "id": str(uuid.uuid4()), "device_id": device_id, "command": f"open_{req.direction}",
+        "label": ALLOWED_COMMANDS[f"open_{req.direction}"], "status": "pending",
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(seconds=MANUAL_OPEN_EXPIRE_SECONDS)).isoformat(),
+        "created_by": admin.get("email", admin["id"]),
+    }
+    await db.device_commands.insert_one(cmd)
+    # Cuenta en el aforo (entradas - salidas del dia)
+    await db.access_logs.insert_one({
+        "id": str(uuid.uuid4()), "gym_id": device.get("gym_id"), "member_id": None,
+        "member_name": f"Apertura manual ({who})", "direction": req.direction,
+        "access_type": "manual", "is_manual": True, "is_guest": False,
+        "opened_by": admin["id"], "opened_by_name": who, "device_id": device_id,
+        "command_id": cmd["id"], "timestamp": now.isoformat(),
+    })
+    return {"command_id": cmd["id"], "status": "pending"}
+
+
+@router.get("/gym/doors/commands/{command_id}")
+async def get_gym_door_command(command_id: str, admin: dict = Depends(get_current_admin)):
+    cmd = await db.device_commands.find_one({"id": command_id}, {"_id": 0})
+    if not cmd:
+        raise HTTPException(status_code=404, detail="Comando no encontrado")
+    device = await db.devices.find_one({"id": cmd["device_id"]}, {"_id": 0, "gym_id": 1})
+    check_role(admin, GYM_STAFF_ROLES, (device or {}).get("gym_id"))
+    if cmd["status"] == "pending" and cmd.get("expires_at") and cmd["expires_at"] < datetime.now(timezone.utc).isoformat():
+        cmd["status"] = "expired"
+    return {"id": cmd["id"], "status": cmd["status"], "output": cmd.get("output")}
+
+
 @router.get("/devices/status")
 async def get_devices_status(admin: dict = Depends(get_current_admin)):
     if admin["role"] != "super_admin":
@@ -126,18 +227,7 @@ async def get_devices_status(admin: dict = Depends(get_current_admin)):
     devices = await db.devices.find({"active": {"$ne": False}}, {"_id": 0}).to_list(length=None)
     now = datetime.now(timezone.utc)
     for d in devices:
-        if d.get("last_ping"):
-            try:
-                last = datetime.fromisoformat(d["last_ping"].replace("Z", "+00:00"))
-                diff = (now - last).total_seconds()
-                d["computed_status"] = "online" if diff < 120 else "offline"
-                d["seconds_since_ping"] = int(diff)
-            except Exception:
-                d["computed_status"] = "offline"
-                d["seconds_since_ping"] = None
-        else:
-            d["computed_status"] = "offline"
-            d["seconds_since_ping"] = None
+        _with_status(d, now)
         gym = await db.gyms.find_one({"id": d.get("gym_id")}, {"_id": 0, "name": 1})
         d["gym_name"] = gym.get("name", "Desconocido") if gym else "Desconocido"
         await _expire_old_commands(d["id"])

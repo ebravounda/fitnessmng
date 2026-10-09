@@ -42,7 +42,7 @@ GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
 DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
 VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
 SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gym24-access')
-SOFTWARE_VERSION = '2.2'
+SOFTWARE_VERSION = '2.3'
 HEARTBEAT_SECONDS = 20
 _SI = ('1', 'true', 'si', 'yes')
 INVERTIR_LECTORES = os.environ.get('INVERTIR_LECTORES', '0').strip().lower() in _SI
@@ -361,7 +361,11 @@ class AccessController:
             return
         
         if resultado.get('valid'):
-            direction = resultado.get('direction', forced_direction if forced_direction != 'auto' else 'entrada')
+            # Con 2 lectores, el torno que se abre es SIEMPRE el del lector donde se escaneo
+            if forced_direction in ('entrada', 'salida'):
+                direction = forced_direction
+            else:
+                direction = resultado.get('direction', 'entrada')
             
             if resultado.get('is_guest'):
                 nombre = resultado.get('guest_name', 'Invitado')

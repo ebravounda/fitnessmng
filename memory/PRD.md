@@ -98,6 +98,13 @@ docker run -d \
 - Verificado con script python: 3 escaneos seguidos → 1 log "entrada"; escaneo a los 11s → "salida".
 - PENDIENTE USUARIO: Save to GitHub + desplegar en VPS + copiar nuevo raspberry_access_control.py a cada Raspberry.
 
+## Cambios Jun 2026 — Monitor RPi avanzado (Super Admin)
+- Raspberry (`raspberry_access_control.py` v2.1): heartbeat cada 20s a `/api/devices/{id}/heartbeat` con IP local, hostname, temp, CPU, RAM, disco, uptime, WiFi, lectores QR, cámara, último escaneo. Ejecuta comandos remotos y reporta resultado (`/command-result`). Env opcional `GYMACCESS_SERVICE_NAME` (default `gymaccess`).
+- Comandos: reboot, restart_service, open_entrada, open_salida, test_video. Pendientes >10 min → expired.
+- Backend `device_management_routes.py`: heartbeat valida que el dispositivo pertenezca al gym del token; IP pública desde X-Forwarded-For; `/devices/status` incluye `recent_commands`.
+- Frontend `components/DeviceMonitorCard.js` + `AdminDeviceMonitor.js` (refresco 10s, métricas en rojo si alarma, confirmación para reinicios).
+- Testing agent iteration_32: 100% backend/frontend.
+
 ### P0 (próxima sesión)
 - Ejecutar testing_agent_v3_fork para validar E2E backend + frontend
 - Re-subir logos de gyms (FitnessManager, MIXED Sport Center, Sala de Armas)

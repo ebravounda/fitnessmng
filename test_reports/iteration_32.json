@@ -1,0 +1,34 @@
+{
+  "summary": "Tested the new Monitor RPi feature end-to-end (backend + frontend). Backend: 10/11 pytest cases passed; 1 skipped (cross-tenant 403 heartbeat cannot be exercised because only one gym exists with an api_token in this env). Frontend: super admin login, /admin/device-monitor renders device card with local IP (192.168.1.77), public IP (35.193.209.116), temp, CPU, RAM, disk, uptime, WiFi, QR readers, camera, last scan, software version; EN LINEA status visible with pulsing green dot. Command buttons work: open_entrada sends immediately with toast; reboot and restart_service open AlertDialog (data-testid command-confirm-dialog), cancel closes without sending, confirm sends and shows toast. Command history (data-testid device-command-history-{id}) updates with pending/delivered/executed rows. Heartbeat → pending command delivery → command-result flow fully functional. Pending test-side commands were drained via heartbeats so the real Pi will not execute them later.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_device_monitor.py",
+    "/app/test_reports/pytest/pytest_results_iteration32.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "device_management_routes._expire_old_commands is called inside the per-device loop in GET /devices/status; harmless now but with N devices this is O(N) writes per poll (every 10s). Consider a single update_many across all devices.",
+    "POST /devices/{id}/heartbeat and /command-result parse the request body manually (await request.json()) instead of using Pydantic models. Add schemas to get validation + 422 responses on malformed payloads.",
+    "GET /devices/status does one gyms.find_one per device (N+1 query). Batch with $in or $lookup for scalability.",
+    "DeviceMonitorCard.js: the Loader2 icon reuses ui.cls which contains 'animate-spin' — correct, but the sibling label text next to it strips 'animate-spin' with a .replace, which is a brittle string hack. Define separate classes for icon vs label.",
+    "Only the first X-Forwarded-For hop is used for public_ip; behind multiple proxies this may capture an internal IP. Documented ok for current infra."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_device_monitor.py"
+  ],
+  "success_rate": {"backend": "100% (10 passed, 1 skipped - env limitation)", "frontend": "100%"},
+  "test_credentials": "info@gym24.es / admin123 (super_admin). Test device id fee8e8ca-57c3-4ab8-9d62-e58bd9299d3c in gym 33562209-...214c, gym api_token eOj7FRBkJe2gbE_TugB8gOJKSJYTWVYjnGomxwrIM2M. Only 1 gym (Bd Test) exists in this environment with an api_token.",
+  "seed_data_creation": "No new devices created. All pending commands produced during testing (test_video, open_entrada, restart_service) were drained via heartbeat loop and marked executed/test-cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Monitor RPi feature is fully working. Cross-tenant 403 heartbeat check requires a second gym with api_token to test — currently skipped. If a 2nd gym exists later, re-run test_heartbeat_wrong_gym_token. Public IP captured via X-Forwarded-For comes out as the preview-proxy exit IP (e.g. 35.193.209.116) which is expected.",
+  "rca of the issue": "N/A - no issues found."
+}

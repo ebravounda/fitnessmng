@@ -18,6 +18,7 @@ ALLOWED_COMMANDS = {
     "open_entrada": "Abrir torno ENTRADA",
     "open_salida": "Abrir torno SALIDA",
     "test_video": "Grabar video de prueba",
+    "pair_readers": "Emparejar lectores",
 }
 COMMAND_EXPIRE_MINUTES = 10
 MANUAL_OPEN_EXPIRE_SECONDS = 60  # una apertura manual tardia nunca se ejecuta
@@ -27,6 +28,7 @@ TELEMETRY_FIELDS = [
     "local_ip", "hostname", "cpu_temp", "cpu_usage", "memory_usage", "disk_usage",
     "uptime", "wifi_signal", "software_version", "qr_readers", "camera",
     "last_scan_at", "last_scan_result", "invert_readers", "invert_relays",
+    "reader_mode", "pairing",
 ]
 
 

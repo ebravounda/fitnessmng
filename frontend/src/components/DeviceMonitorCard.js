@@ -3,7 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import {
   Globe, MapPin, Thermometer, Cpu, MemoryStick, HardDrive, Clock, Wifi, ScanLine, Camera,
-  Power, RotateCcw, DoorOpen, DoorClosed, Video, Loader2, CheckCircle2, XCircle, Hourglass,
+  Power, RotateCcw, DoorOpen, DoorClosed, Video, Loader2, CheckCircle2, XCircle, Hourglass, Link2,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -16,6 +16,7 @@ const COMMANDS = [
   { id: 'open_entrada', label: 'Abrir entrada', icon: DoorOpen },
   { id: 'open_salida', label: 'Abrir salida', icon: DoorClosed },
   { id: 'test_video', label: 'Video prueba', icon: Video },
+  { id: 'pair_readers', label: 'Emparejar lectores', icon: Link2, hint: 'Escanea un QR en el lector de ENTRADA en los proximos 60 s' },
   { id: 'restart_service', label: 'Reiniciar servicio', icon: RotateCcw, confirm: true },
   { id: 'reboot', label: 'Reiniciar RPi', icon: Power, confirm: true, danger: true },
 ];
@@ -69,6 +70,7 @@ const DeviceMetrics = ({ d, isOnline }) => {
       <Metric icon={Camera} label="Camara" value={d.camera || 'No detectada'} alert={isOnline && d.software_version && !d.camera} testId={`device-camera-${d.id}`} />
       <Metric icon={ScanLine} label="Ultimo escaneo" value={d.last_scan_result || '-'} testId={`device-last-scan-${d.id}`} />
       <Metric icon={Cpu} label="Version" value={d.software_version || 'Antigua'} testId={`device-version-${d.id}`} />
+      <Metric icon={Link2} label="Asignacion" value={d.pairing ? 'Esperando QR en ENTRADA...' : (d.reader_mode || '-')} alert={isOnline && (d.reader_mode || '').includes('SIN EMPAREJAR')} testId={`device-reader-mode-${d.id}`} />
       <Metric icon={RotateCcw} label="Inversion" value={[d.invert_readers && 'Lectores', d.invert_relays && 'Reles'].filter(Boolean).join(' + ') || 'No'} testId={`device-inversion-${d.id}`} />
     </div>
   );
@@ -103,7 +105,7 @@ const CommandBar = ({ deviceId, isOnline, onSent }) => {
     setSending(cmd.id);
     try {
       await axios.post(`${API}/devices/${deviceId}/command`, { command: cmd.id });
-      toast.success(`"${cmd.label}" enviado. Se ejecutara en menos de 20s.`);
+      toast.success(cmd.hint || `"${cmd.label}" enviado`, { duration: cmd.hint ? 10000 : 4000 });
       onSent();
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Error al enviar comando');

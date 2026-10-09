@@ -120,6 +120,12 @@ docker run -d \
 - Coslada/FitnessPlace: INVERTIR_RELES=1 e INVERTIR_LECTORES=1 confirmados funcionando (20:39).
 - Manual DispositivosGym24 v2.2. Testing iteration_33: 100%.
 
+## Cambios Jun 2026 — Emparejamiento de lectores por puerto USB (script Pi 2.5)
+- CAUSA RAÍZ de inversiones intermitentes: lectores asignados por orden /dev/input/eventX (no estable entre reinicios). Confirmado en coslada (INVERTIR_LECTORES dejó de valer tras reinicio; volver a 0 lo arregló).
+- Pi 2.5: `_port_id` (device.phys / by-path), `_assign_readers` (prioridad env LECTOR_ENTRADA_PUERTO > /opt/gym24/lectores.json > orden+INVERTIR_LECTORES legacy), dirección consultada por escaneo (`reader_dirs`), comando remoto `pair_readers` (60s, el QR de emparejamiento no abre torno). Telemetría `reader_mode`, `pairing`.
+- Monitor RPi: botón "Emparejar lectores", métrica "Asignacion" (rojo si SIN EMPAREJAR). Tests: `backend/tests/test_pi_reader_pairing.py`.
+- Manual v2.3.
+
 ### P0 (próxima sesión)
 - Ejecutar testing_agent_v3_fork para validar E2E backend + frontend
 - Re-subir logos de gyms (FitnessManager, MIXED Sport Center, Sala de Armas)

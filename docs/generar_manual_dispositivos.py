@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "DispositivosGym24.pdf"
 PUBLIC_COPY = ROOT / "frontend/public/downloads/DispositivosGym24.pdf"
 LOGO = ROOT / "frontend/public/logo512.png"
-VERSION = "2.2"
+VERSION = "2.3"
 FECHA = "Junio 2026"
 API = "https://api.gym24.app"
 
@@ -98,7 +98,7 @@ def cover():
     story.append(Paragraph("Guía de aprovisionamiento de Raspberry Pi para control de acceso", ParagraphStyle("S", parent=BODY, fontSize=13, leading=17, alignment=TA_CENTER, textColor=colors.HexColor("#555555"))))
     story.append(Spacer(1, 25 * mm))
     meta = [["Documento", "DispositivosGym24"], ["Versión", VERSION], ["Fecha", FECHA],
-            ["Sistema", "Raspberry Pi 4/5 + Pi OS Lite 64-bit"], ["Script Pi", "raspberry_access_control.py v2.4"], ["Backend", API.replace("https://", "")]]
+            ["Sistema", "Raspberry Pi 4/5 + Pi OS Lite 64-bit"], ["Script Pi", "raspberry_access_control.py v2.5"], ["Backend", API.replace("https://", "")]]
     t = Table(meta, colWidths=[40 * mm, 80 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), ORANGE), ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
@@ -135,6 +135,8 @@ def toc():
         "Nuevos ajustes <font face='Courier'>INVERTIR_LECTORES</font> e <font face='Courier'>INVERTIR_RELES</font> para corregir cables cruzados sin tocar el hardware.",
         "<b>v2.2 (script 2.4)</b>: <b>apertura instantánea</b> (menos de 1 s). El admin y el staff del gimnasio tienen los botones "
         "<b>Abrir entrada / Abrir salida</b> arriba en su Dashboard; cada apertura queda en Accesos como \"Apertura manual\" y cuenta en el aforo.",
+        "<b>v2.3 (script 2.5)</b>: <b>emparejamiento de lectores por puerto USB físico</b>. Linux puede renumerar los lectores (/dev/input/eventX) "
+        "en cada reinicio y antes eso invertía entrada/salida al azar. Ahora se empareja una vez (botón <b>Emparejar lectores</b>) y queda fijo.",
     ])
     story.append(PageBreak())
 
@@ -208,7 +210,7 @@ def s7_to_s12():
     code("sudo mkdir -p /opt/gym24\ncd /opt/gym24")
     p("Descargar la última versión del script <b>desde el servidor Gym24</b>:")
     code(f"sudo curl -fsSL {API}/api/download/raspberry-py \\\n  -o /opt/gym24/raspberry_access_control.py\n\n"
-         "# Comprobar la version (debe mostrar 2.4 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py")
+         "# Comprobar la version (debe mostrar 2.5 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py")
     p("Crear el entorno virtual e instalar dependencias:")
     code("sudo python3 -m venv /opt/gym24/venv\nsudo /opt/gym24/venv/bin/pip install requests python-dotenv RPi.GPIO evdev")
 
@@ -277,8 +279,8 @@ sudo systemctl restart systemd-journald""")
          "Modo USB activo - 2 lectores\nThread iniciado: lector 'MEGAHUNT...' -> ENTRADA\nThread iniciado: lector 'MEGAHUNT...' -> SALIDA")
     h2("b) Monitor RPi (antes de 30 segundos)")
     bullets(["Entra como Super Admin -> <b>Monitor RPi</b>",
-             "La tarjeta del dispositivo debe mostrar <b>EN LINEA</b>, IP local, temperatura, lectores QR detectados, cámara y <b>Versión 2.4</b>",
-             "Si aparece el aviso \"script antiguo\", el script no es la versión 2.4: repite el paso 7"])
+             "La tarjeta del dispositivo debe mostrar <b>EN LINEA</b>, IP local, temperatura, lectores QR detectados, cámara y <b>Versión 2.5</b>",
+             "Si aparece el aviso \"script antiguo\", el script no es la versión 2.5: repite el paso 7"])
     h2("c) Prueba de funcionamiento desde el panel")
     table([
         ["Botón", "Resultado esperado (en menos de 20 s)"],
@@ -286,7 +288,11 @@ sudo systemctl restart systemd-journald""")
         ["Abrir salida", "Click del relé de SALIDA. Historial: OK"],
         ["Video prueba", "Historial: \"Video de 4s grabado OK (xxx KB)\""],
     ], [40, 130])
-    h2("d) Prueba con un socio")
+    h2("d) Emparejar lectores (OBLIGATORIO con 2 lectores)")
+    bullets(["En Monitor RPi pulsa <b>Emparejar lectores</b>",
+             "En los 60 s siguientes escanea cualquier QR en el lector de la <b>ENTRADA física</b> (ese escaneo no abre el torno)",
+             "Historial: \"Lector de ENTRADA guardado (puerto ...)\". El dato <b>Asignación</b> pasa a \"por puerto USB (emparejado)\""])
+    h2("e) Prueba con un socio")
     bullets(["Escanea el QR de un socio con membresía activa -> el torno abre", "En Admin -> Accesos aparece una sola marca con su video"])
 
 
@@ -340,7 +346,7 @@ def s13_to_s15():
     p("Si el script está en <font face='Courier'>/opt/gym24/</font> y el servicio es <font face='Courier'>gym24-access</font> (instalación estándar):")
     code(f"# 2. Copia de seguridad\nsudo cp /opt/gym24/raspberry_access_control.py \\\n  /opt/gym24/raspberry_access_control.py.bak\n\n"
          f"# 3. Descargar la nueva version\nsudo curl -fsSL {API}/api/download/raspberry-py \\\n  -o /opt/gym24/raspberry_access_control.py\n\n"
-         "# 4. Comprobar version (2.4 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py\n\n"
+         "# 4. Comprobar version (2.5 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py\n\n"
          "# 5. Reiniciar y revisar\nsudo systemctl restart gym24-access\nsleep 5\nsudo journalctl -u gym24-access -n 20 --no-pager")
     box("<b>Volver a la versión anterior</b> si algo falla:<br/>"
         "<font face='Courier'>sudo cp /opt/gym24/raspberry_access_control.py.bak /opt/gym24/raspberry_access_control.py<br/>sudo systemctl restart gym24-access</font>")
@@ -354,7 +360,7 @@ def s16_to_end():
         ("La Pi aparece OFFLINE en Monitor RPi",
          "curl https://api.gym24.app/api/\nsudo cat /opt/gym24/.env\nsudo journalctl -u gym24-access -n 50 --no-pager",
          "Comprueba Internet, que GYM_TOKEN y DEVICE_ID son correctos y que el dispositivo pertenece al mismo gimnasio que el token."),
-        ("Aviso \"script antiguo\" / Versión: Antigua", None, "La Pi ejecuta un script anterior a 2.4. Sigue el paso 15."),
+        ("Aviso \"script antiguo\" / Versión: Antigua", None, "La Pi ejecuta un script anterior a 2.5. Sigue el paso 15."),
         ("Los comandos quedan en Pendiente o Expirado", "sudo systemctl status gym24-access",
          "La Pi no está enviando señal. Si está OFFLINE, revisa red y servicio. Los comandos expiran a los 10 min."),
         ("\"Reiniciar servicio\" no hace nada", "systemctl list-units --type=service --all | grep -iE \"gym|access\"",
@@ -397,23 +403,26 @@ GPIO.cleanup()"
     ], [55, 115])
 
     h1("18. Anexo: configuración multi-lector (entrada + salida)")
-    bullets(["1er lector detectado (ruta /dev/input/eventX más baja) -> lector de <b>ENTRADA</b>",
-             "2º lector -> lector de <b>SALIDA</b>",
-             "Con 2 lectores, <b>el lector donde se escanea decide la dirección</b>: en el de ENTRADA siempre se registra Entrada y abre el torno de entrada; en el de SALIDA, Salida.",
-             "Un solo lector -> modo auto (el servidor alterna entrada/salida; la primera marca de un socio nuevo siempre es Entrada)",
-             "Lectores adicionales -> se ignoran"])
-    h2("Comprobación obligatoria tras instalar (2 minutos)")
+    bullets(["Con 2 lectores, <b>el lector donde se escanea decide la dirección</b> y abre su torno (entrada o salida).",
+             "Un solo lector -> modo auto (el servidor alterna entrada/salida; la primera marca de un socio nuevo siempre es Entrada).",
+             "Lectores adicionales -> se ignoran."])
+    box("<b>Por qué hay que emparejar:</b> Linux numera los lectores (/dev/input/event2, event3...) según cuál detecta primero, y ese orden "
+        "<b>puede cambiar en cada reinicio</b>. Sin emparejar, entrada y salida pueden quedar invertidas al azar. El emparejamiento guarda el "
+        "<b>puerto USB físico</b> del lector de entrada, que no cambia.")
+    h2("Emparejar (una vez por Raspberry, y si cambias los lectores de puerto USB)")
+    bullets(["Monitor RPi -> <b>Emparejar lectores</b> -> escanear un QR en el lector de la ENTRADA física antes de 60 s.",
+             "Se guarda en /opt/gym24/lectores.json. A partir de ahí, INVERTIR_LECTORES se ignora.",
+             "Si el dato Asignación muestra \"SIN EMPAREJAR\" (en rojo), empareja de nuevo."])
+    h2("Comprobación tras instalar (2 minutos)")
     table([
         ["Prueba", "Correcto si...", "Si falla"],
-        ["Pulsar \"Abrir entrada\" en Monitor RPi", "Se abre el torno de ENTRADA", "Relés cruzados: INVERTIR_RELES=1"],
-        ["Escanear un QR en el lector de la entrada física y mirar el log", "El log dice \"QR escaneado (entrada)\"", "Lectores cruzados: INVERTIR_LECTORES=1"],
-    ], [60, 55, 55])
-    code("sudo journalctl -u gym24-access -n 5 --no-pager | grep 'QR escaneado'")
-    h2("Corregir cables cruzados sin tocar el hardware")
-    code("sudo nano /opt/gym24/.env\n\n# Añadir o cambiar (1 = invertido, 0 = normal)\nINVERTIR_LECTORES=1\nINVERTIR_RELES=1\n\n"
-         "sudo systemctl restart gym24-access\nsudo journalctl -u gym24-access -n 20 --no-pager | grep -E 'Modo USB|Thread iniciado'")
-    p("En el log y en la tarjeta del Monitor RPi (dato \"Inversión\" y \"Lectores QR\") verás qué lector quedó como ENTRADA y cuál como SALIDA. "
-      "Repite las 2 pruebas para confirmar. También puedes intercambiar físicamente los USB de los lectores o los cables IN1/IN2 del relé (con la Pi apagada).")
+        ["Pulsar \"Abrir entrada\" en Monitor RPi", "Se abre el torno de ENTRADA", "Relés cruzados: INVERTIR_RELES=1 en el .env"],
+        ["Escanear un QR en la entrada física", "Abre la entrada y el log dice \"QR escaneado (entrada)\"", "Volver a emparejar lectores"],
+    ], [55, 60, 55])
+    code("sudo journalctl -u gym24-access -n 30 --no-pager | grep -E 'Asignacion|Lector ENTRADA|Lector SALIDA|QR escaneado'")
+    h2("Alternativa manual (sin botón)")
+    p("Ver los puertos con <font face='Courier'>sudo journalctl -u gym24-access | grep puerto=</font> y fijar en el .env "
+      "<font face='Courier'>LECTOR_ENTRADA_PUERTO=usb-...</font> (tiene prioridad sobre el emparejamiento). Reiniciar el servicio.")
 
     h1("Reglas importantes")
     bullets([

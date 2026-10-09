@@ -11,6 +11,7 @@ import logging
 import threading
 import subprocess
 import socket
+import json
 import shutil
 import requests
 from datetime import datetime
@@ -42,11 +43,15 @@ GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
 DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
 VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
 SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gym24-access')
-SOFTWARE_VERSION = '2.4'
+SOFTWARE_VERSION = '2.5'
 HEARTBEAT_SECONDS = 20
 _SI = ('1', 'true', 'si', 'yes')
 INVERTIR_LECTORES = os.environ.get('INVERTIR_LECTORES', '0').strip().lower() in _SI
 INVERTIR_RELES = os.environ.get('INVERTIR_RELES', '0').strip().lower() in _SI
+# Lector de ENTRADA por puerto USB fisico (estable entre reinicios). Prioridad: env > emparejamiento guardado
+LECTOR_ENTRADA_PUERTO = os.environ.get('LECTOR_ENTRADA_PUERTO', '').strip()
+PAIRING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lectores.json')
+PAIRING_SECONDS = 60
 
 
 def _auto_detect_video_device():
@@ -88,6 +93,11 @@ class AccessController:
         self._last_scan = {}
         self._scan_lock = threading.Lock()
         self.reader_names = []
+        self.reader_dirs = {}      # path -> 'entrada' | 'salida' | 'auto'
+        self.readers = []
+        self.reader_mode = 'sin lectores'
+        self.pairing_until = 0
+        self.pairing_command_id = None
         self.last_scan_at = None
         self.last_scan_result = None
         self._cpu_prev = None
@@ -184,7 +194,9 @@ class AccessController:
             "camera": self._camera(),
             "last_scan_at": self.last_scan_at,
             "last_scan_result": self.last_scan_result,
-            "invert_readers": INVERTIR_LECTORES,
+            "invert_readers": INVERTIR_LECTORES and 'SIN EMPAREJAR' in self.reader_mode,
+            "reader_mode": self.reader_mode,
+            "pairing": self.pairing_until > time.time(),
             "invert_relays": INVERTIR_RELES,
         }
 
@@ -249,6 +261,8 @@ class AccessController:
                     size = os.path.getsize(filepath)
                     os.remove(filepath)
                     self._report_command(command_id, True, f"Video de {VIDEO_DURATION}s grabado OK ({size // 1024} KB)")
+            elif command == 'pair_readers':
+                self._start_pairing(command_id)
             elif command == 'restart_service':
                 self._report_command(command_id, True, f"Reiniciando servicio {SERVICE_NAME}...")
                 subprocess.run(['sudo', 'systemctl', 'restart', SERVICE_NAME], timeout=30)
@@ -489,15 +503,101 @@ class AccessController:
         return None
 
     def _reader_loop(self, device, forced_direction):
-        """Loop dedicado a leer de un lector y procesar con direccion forzada."""
-        logger.info(f"Thread iniciado: lector '{device.name}' -> {forced_direction.upper()}")
+        """Loop dedicado a leer de un lector. La direccion se consulta en cada escaneo (puede cambiar al emparejar)."""
+        logger.info(f"Thread iniciado: lector '{device.name}' [{self._port_id(device)}] -> {forced_direction.upper()}")
         try:
             while self.running:
                 qr_code = self._read_qr_from_device(device)
-                if qr_code:
-                    self.procesar_qr(qr_code, forced_direction)
+                if not qr_code:
+                    continue
+                if self.pairing_until > time.time():
+                    self._complete_pairing(device)
+                    continue
+                self.procesar_qr(qr_code, self.reader_dirs.get(device.path, forced_direction))
         except Exception as e:
             logger.error(f"Error en lector {device.name}: {e}")
+
+    # ==================== LECTORES POR PUERTO USB FISICO ====================
+
+    @staticmethod
+    def _port_id(device):
+        """Identificador del puerto USB fisico (no cambia entre reinicios, a diferencia de /dev/input/eventX)."""
+        phys = (device.phys or '').split('/input')[0]
+        if phys:
+            return phys
+        by_path = '/dev/input/by-path'
+        if os.path.isdir(by_path):
+            for name in os.listdir(by_path):
+                if os.path.realpath(os.path.join(by_path, name)) == device.path:
+                    return name
+        return device.path
+
+    def _load_pairing(self):
+        try:
+            with open(PAIRING_FILE) as f:
+                return json.load(f).get('entrada')
+        except (OSError, ValueError):
+            return None
+
+    def _assign_readers(self, devices):
+        """Devuelve [(device, direccion)] y el modo usado."""
+        if len(devices) == 1:
+            return [(devices[0], 'auto')], 'lector unico (auto)'
+        a, b = devices[0], devices[1]
+        if self._port_id(a) == self._port_id(b):
+            logger.warning("Los 2 lectores comparten puerto; no se puede asignar por puerto USB")
+            return [(a, 'entrada'), (b, 'salida')], 'orden de deteccion (SIN EMPAREJAR)'
+        for source, port in (('LECTOR_ENTRADA_PUERTO', LECTOR_ENTRADA_PUERTO), ('emparejado', self._load_pairing())):
+            if not port:
+                continue
+            match = [d for d in (a, b) if self._port_id(d) == port]
+            if match:
+                entrada = match[0]
+                salida = b if entrada is a else a
+                return [(entrada, 'entrada'), (salida, 'salida')], f'por puerto USB ({source})'
+            logger.warning(f"Puerto de ENTRADA {port} ({source}) no conectado; se usa el orden de deteccion")
+        entrada, salida = (b, a) if INVERTIR_LECTORES else (a, b)
+        return [(entrada, 'entrada'), (salida, 'salida')], 'orden de deteccion (SIN EMPAREJAR)'
+
+    def _apply_assignments(self, assignments, mode):
+        self.reader_dirs = {d.path: direc for d, direc in assignments}
+        self.reader_mode = mode
+        self.reader_names = [f"{direc.upper()}: puerto {self._port_id(d)}" for d, direc in assignments]
+        for d, direc in assignments:
+            logger.info(f"Lector {direc.upper()}: {d.path} puerto={self._port_id(d)}")
+        logger.info(f"Asignacion de lectores: {mode}")
+
+    def _start_pairing(self, command_id):
+        if len(self.readers) < 2:
+            self._report_command(command_id, False, "Se necesitan 2 lectores conectados para emparejar")
+            return
+        self.pairing_command_id = command_id
+        self.pairing_until = time.time() + PAIRING_SECONDS
+        logger.info(f"EMPAREJAMIENTO: escanea un QR en el lector de ENTRADA (tienes {PAIRING_SECONDS}s)")
+        time.sleep(PAIRING_SECONDS)
+        if self.pairing_until and self.pairing_command_id == command_id:
+            self.pairing_until = 0
+            self.pairing_command_id = None
+            self._report_command(command_id, False, f"No se escaneo ningun QR en {PAIRING_SECONDS}s. Vuelve a intentarlo.")
+
+    def _complete_pairing(self, device):
+        command_id = self.pairing_command_id
+        self.pairing_until = 0
+        self.pairing_command_id = None
+        port = self._port_id(device)
+        try:
+            with open(PAIRING_FILE, 'w') as f:
+                json.dump({'entrada': port, 'fecha': datetime.now().isoformat(timespec='seconds')}, f)
+        except OSError as e:
+            logger.error(f"No se pudo guardar el emparejamiento: {e}")
+            if command_id:
+                self._report_command(command_id, False, f"No se pudo guardar: {e}")
+            return
+        assignments, mode = self._assign_readers(self.readers)
+        self._apply_assignments(assignments, mode)
+        logger.info(f"EMPAREJAMIENTO OK: lector de ENTRADA = puerto {port}")
+        if command_id:
+            self._report_command(command_id, True, f"Lector de ENTRADA guardado (puerto {port}). El otro es SALIDA.")
 
     def run(self):
         # Detectar camara (env var o auto)
@@ -530,18 +630,17 @@ class AccessController:
                 assignments.append((devices[0], "auto"))
                 print(f"   Lector unico: {devices[0].name} -> ENTRADA/SALIDA auto")
             else:
-                entrada_dev, salida_dev = (devices[1], devices[0]) if INVERTIR_LECTORES else (devices[0], devices[1])
-                assignments.append((entrada_dev, "entrada"))
-                assignments.append((salida_dev, "salida"))
-                print(f"   Lector ENTRADA: {entrada_dev.name} ({entrada_dev.path})")
-                print(f"   Lector SALIDA:  {salida_dev.name} ({salida_dev.path})")
+                self.readers = devices[:2]
+                assignments, mode = self._assign_readers(self.readers)
+                self._apply_assignments(assignments, mode)
                 if len(devices) > 2:
                     print(f"   (Ignorando {len(devices) - 2} lectores adicionales)")
             print("="*50)
             print("   Esperando codigos QR...")
             print("="*50 + "\n")
-            self.reader_names = [f"{d.path} -> {direc.upper()}" for d, direc in assignments]
-            logger.info(f"Modo USB activo - {len(assignments)} lectores | INVERTIR_LECTORES={INVERTIR_LECTORES} INVERTIR_RELES={INVERTIR_RELES}")
+            if len(devices) == 1:
+                self._apply_assignments(assignments, 'lector unico (auto)')
+            logger.info(f"Modo USB activo - {len(assignments)} lectores | {self.reader_mode} | INVERTIR_RELES={INVERTIR_RELES}")
 
             threads = []
             for device, direction in assignments:

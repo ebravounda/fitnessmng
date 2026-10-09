@@ -29,6 +29,7 @@ def get_object(path: str) -> tuple:
     content_type = content_types.get(ext, "application/octet-stream")
     return data, content_type
 
-def write_file(file_path: Path, data: bytes) -> None:
+def write_file(path: str, data: bytes) -> None:
+    file_path = Path(path)
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_bytes(data)

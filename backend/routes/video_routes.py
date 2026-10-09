@@ -45,7 +45,7 @@ async def upload_access_video(
     if len(content) > 10 * 1024 * 1024:  # Max 10MB
         raise HTTPException(status_code=413, detail="Video too large (max 10MB)")
     
-    write_file(filepath, content)
+    write_file(str(filepath), content)
     
     # Update access log with video reference
     await db.access_logs.update_one(

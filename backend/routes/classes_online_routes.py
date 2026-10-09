@@ -40,7 +40,7 @@ async def create_online_class(
     if len(content) > 500 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Video demasiado grande (max 500MB)")
 
-    write_file(filepath, content)
+    write_file(str(filepath), content)
 
     # assigned_to: "all" or comma-separated member IDs
     member_ids = [] if assigned_to == "all" else [mid.strip() for mid in assigned_to.split(",") if mid.strip()]

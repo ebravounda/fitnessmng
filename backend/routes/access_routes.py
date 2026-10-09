@@ -245,10 +245,15 @@ async def validate_access(validation: AccessValidation):
         logger.info(f"Doble lectura ignorada (QR) socio {member.get('code')}")
         return {"valid": True, "duplicate": True, "member_name": member["name"],
                 "member_code": member["code"], "direction": last_log.get("direction")}
-    # NUEVO: si el socio nunca ha ingresado, su PRIMERA marca es siempre ENTRADA
+    # Pi >= 2.2 con 2 lectores: manda el lector fisico donde se escaneo
+    reader_direction = validation.direction if validation.device_id and validation.direction in ("entrada", "salida") else None
     if member.get("needs_first_entry"):
-        actual_direction = "entrada"
         await db.members.update_one({"id": member["id"]}, {"$unset": {"needs_first_entry": ""}})
+    if reader_direction:
+        actual_direction = reader_direction
+    elif member.get("needs_first_entry"):
+        # Primera marca de un socio nuevo siempre ENTRADA (modo auto)
+        actual_direction = "entrada"
     elif last_log:
         actual_direction = "salida" if last_log.get("direction") == "entrada" else "entrada"
     else:

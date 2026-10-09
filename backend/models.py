@@ -117,6 +117,7 @@ class AccessValidation(BaseModel):
     qr_code: str
     gym_token: str
     direction: str
+    device_id: str | None = None  # Enviado por script Pi >= 2.2: el lector fisico decide la direccion
 
 class DeviceCreate(BaseModel):
     gym_id: str

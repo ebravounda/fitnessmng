@@ -69,6 +69,7 @@ const DeviceMetrics = ({ d, isOnline }) => {
       <Metric icon={Camera} label="Camara" value={d.camera || 'No detectada'} alert={isOnline && d.software_version && !d.camera} testId={`device-camera-${d.id}`} />
       <Metric icon={ScanLine} label="Ultimo escaneo" value={d.last_scan_result || '-'} testId={`device-last-scan-${d.id}`} />
       <Metric icon={Cpu} label="Version" value={d.software_version || 'Antigua'} testId={`device-version-${d.id}`} />
+      <Metric icon={RotateCcw} label="Inversion" value={[d.invert_readers && 'Lectores', d.invert_relays && 'Reles'].filter(Boolean).join(' + ') || 'No'} testId={`device-inversion-${d.id}`} />
     </div>
   );
 };

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "DispositivosGym24.pdf"
 PUBLIC_COPY = ROOT / "frontend/public/downloads/DispositivosGym24.pdf"
 LOGO = ROOT / "frontend/public/logo512.png"
-VERSION = "2.0"
+VERSION = "2.1"
 FECHA = "Junio 2026"
 API = "https://api.gym24.app"
 
@@ -98,7 +98,7 @@ def cover():
     story.append(Paragraph("Guía de aprovisionamiento de Raspberry Pi para control de acceso", ParagraphStyle("S", parent=BODY, fontSize=13, leading=17, alignment=TA_CENTER, textColor=colors.HexColor("#555555"))))
     story.append(Spacer(1, 25 * mm))
     meta = [["Documento", "DispositivosGym24"], ["Versión", VERSION], ["Fecha", FECHA],
-            ["Sistema", "Raspberry Pi 4/5 + Pi OS Lite 64-bit"], ["Script Pi", "raspberry_access_control.py v2.1"], ["Backend", API.replace("https://", "")]]
+            ["Sistema", "Raspberry Pi 4/5 + Pi OS Lite 64-bit"], ["Script Pi", "raspberry_access_control.py v2.2"], ["Backend", API.replace("https://", "")]]
     t = Table(meta, colWidths=[40 * mm, 80 * mm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), ORANGE), ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
@@ -131,6 +131,8 @@ def toc():
         "<b>Anti-doble lectura</b>: un mismo QR leído dos veces seguidas (o por los dos lectores) ya no genera una \"Salida\" fantasma.",
         "<b>Descarga del script desde el servidor Gym24</b> (ya no hace falta acceso a GitHub).",
         "Nueva variable opcional <font face='Courier'>GYMACCESS_SERVICE_NAME</font> y procedimiento de actualización con copia de seguridad.",
+        "<b>v2.1 (script 2.2)</b>: con 2 lectores, <b>el lector donde se escanea decide</b> si es ENTRADA o SALIDA (ya no alterna). "
+        "Nuevos ajustes <font face='Courier'>INVERTIR_LECTORES</font> e <font face='Courier'>INVERTIR_RELES</font> para corregir cables cruzados sin tocar el hardware.",
     ])
     story.append(PageBreak())
 
@@ -204,7 +206,7 @@ def s7_to_s12():
     code("sudo mkdir -p /opt/gym24\ncd /opt/gym24")
     p("Descargar la última versión del script <b>desde el servidor Gym24</b>:")
     code(f"sudo curl -fsSL {API}/api/download/raspberry-py \\\n  -o /opt/gym24/raspberry_access_control.py\n\n"
-         "# Comprobar la version (debe mostrar 2.1 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py")
+         "# Comprobar la version (debe mostrar 2.2 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py")
     p("Crear el entorno virtual e instalar dependencias:")
     code("sudo python3 -m venv /opt/gym24/venv\nsudo /opt/gym24/venv/bin/pip install requests python-dotenv RPi.GPIO evdev")
 
@@ -212,7 +214,8 @@ def s7_to_s12():
     code("sudo nano /opt/gym24/.env")
     p("Pega este contenido (sustituye los valores en mayúscula):")
     code(f"GYMACCESS_SERVER_URL={API}\nGYMACCESS_GYM_TOKEN=TU_TOKEN_AQUI\nGYMACCESS_DEVICE_ID=TU_DEVICE_ID_AQUI\nVIDEO_DEVICE=/dev/video0\n"
-         "# Opcional: solo si el servicio NO se llama gym24-access\n# GYMACCESS_SERVICE_NAME=gym24-access")
+         "# Opcional: solo si el servicio NO se llama gym24-access\n# GYMACCESS_SERVICE_NAME=gym24-access\n"
+         "# Opcional: corregir cables cruzados (ver Anexo 18)\nINVERTIR_LECTORES=0\nINVERTIR_RELES=0")
     p("Guardar con Ctrl+O, Enter, Ctrl+X y proteger el archivo:")
     code("sudo chmod 600 /opt/gym24/.env")
 
@@ -272,8 +275,8 @@ sudo systemctl restart systemd-journald""")
          "Modo USB activo - 2 lectores\nThread iniciado: lector 'MEGAHUNT...' -> ENTRADA\nThread iniciado: lector 'MEGAHUNT...' -> SALIDA")
     h2("b) Monitor RPi (antes de 30 segundos)")
     bullets(["Entra como Super Admin -> <b>Monitor RPi</b>",
-             "La tarjeta del dispositivo debe mostrar <b>EN LINEA</b>, IP local, temperatura, lectores QR detectados, cámara y <b>Versión 2.1</b>",
-             "Si aparece el aviso \"script antiguo\", el script no es la versión 2.1: repite el paso 7"])
+             "La tarjeta del dispositivo debe mostrar <b>EN LINEA</b>, IP local, temperatura, lectores QR detectados, cámara y <b>Versión 2.2</b>",
+             "Si aparece el aviso \"script antiguo\", el script no es la versión 2.2: repite el paso 7"])
     h2("c) Prueba de funcionamiento desde el panel")
     table([
         ["Botón", "Resultado esperado (en menos de 20 s)"],
@@ -302,6 +305,7 @@ def s13_to_s15():
         ["Cámara", "Dispositivo de video detectado", "No detectada"],
         ["Último escaneo", "Último socio escaneado y dirección, o motivo de denegación", "-"],
         ["Versión", "Versión del script de la Pi", "\"Antigua\" = actualizar (paso 15)"],
+        ["Inversión", "Si la Pi tiene activos INVERTIR_LECTORES / INVERTIR_RELES", "-"],
     ], [32, 88, 50])
     h2("Comandos disponibles")
     table([
@@ -330,7 +334,7 @@ def s13_to_s15():
     p("Si el script está en <font face='Courier'>/opt/gym24/</font> y el servicio es <font face='Courier'>gym24-access</font> (instalación estándar):")
     code(f"# 2. Copia de seguridad\nsudo cp /opt/gym24/raspberry_access_control.py \\\n  /opt/gym24/raspberry_access_control.py.bak\n\n"
          f"# 3. Descargar la nueva version\nsudo curl -fsSL {API}/api/download/raspberry-py \\\n  -o /opt/gym24/raspberry_access_control.py\n\n"
-         "# 4. Comprobar version (2.1 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py\n\n"
+         "# 4. Comprobar version (2.2 o superior)\ngrep \"SOFTWARE_VERSION =\" /opt/gym24/raspberry_access_control.py\n\n"
          "# 5. Reiniciar y revisar\nsudo systemctl restart gym24-access\nsleep 5\nsudo journalctl -u gym24-access -n 20 --no-pager")
     box("<b>Volver a la versión anterior</b> si algo falla:<br/>"
         "<font face='Courier'>sudo cp /opt/gym24/raspberry_access_control.py.bak /opt/gym24/raspberry_access_control.py<br/>sudo systemctl restart gym24-access</font>")
@@ -344,7 +348,7 @@ def s16_to_end():
         ("La Pi aparece OFFLINE en Monitor RPi",
          "curl https://api.gym24.app/api/\nsudo cat /opt/gym24/.env\nsudo journalctl -u gym24-access -n 50 --no-pager",
          "Comprueba Internet, que GYM_TOKEN y DEVICE_ID son correctos y que el dispositivo pertenece al mismo gimnasio que el token."),
-        ("Aviso \"script antiguo\" / Versión: Antigua", None, "La Pi ejecuta un script anterior a 2.1. Sigue el paso 15."),
+        ("Aviso \"script antiguo\" / Versión: Antigua", None, "La Pi ejecuta un script anterior a 2.2. Sigue el paso 15."),
         ("Los comandos quedan en Pendiente o Expirado", "sudo systemctl status gym24-access",
          "La Pi no está enviando señal. Si está OFFLINE, revisa red y servicio. Los comandos expiran a los 10 min."),
         ("\"Reiniciar servicio\" no hace nada", "systemctl list-units --type=service --all | grep -iE \"gym|access\"",
@@ -388,11 +392,22 @@ GPIO.cleanup()"
 
     h1("18. Anexo: configuración multi-lector (entrada + salida)")
     bullets(["1er lector detectado (ruta /dev/input/eventX más baja) -> lector de <b>ENTRADA</b>",
-             "2º lector -> lector de <b>SALIDA</b>", "Un solo lector -> modo auto (el servidor alterna entrada/salida)",
+             "2º lector -> lector de <b>SALIDA</b>",
+             "Con 2 lectores, <b>el lector donde se escanea decide la dirección</b>: en el de ENTRADA siempre se registra Entrada y abre el torno de entrada; en el de SALIDA, Salida.",
+             "Un solo lector -> modo auto (el servidor alterna entrada/salida; la primera marca de un socio nuevo siempre es Entrada)",
              "Lectores adicionales -> se ignoran"])
-    p("Si los lectores quedan invertidos (el de entrada abre la salida), intercambia sus puertos USB y reinicia:")
-    code("sudo systemctl restart gym24-access\nsudo journalctl -u gym24-access -n 20 --no-pager | grep 'Thread iniciado'")
-    p("Comprueba en el log qué lector quedó como ENTRADA y cuál como SALIDA, y verifica con los botones \"Abrir entrada\" / \"Abrir salida\" del panel que cada relé corresponde a su torno.")
+    h2("Comprobación obligatoria tras instalar (2 minutos)")
+    table([
+        ["Prueba", "Correcto si...", "Si falla"],
+        ["Pulsar \"Abrir entrada\" en Monitor RPi", "Se abre el torno de ENTRADA", "Relés cruzados: INVERTIR_RELES=1"],
+        ["Escanear un QR en el lector de la entrada física y mirar el log", "El log dice \"QR escaneado (entrada)\"", "Lectores cruzados: INVERTIR_LECTORES=1"],
+    ], [60, 55, 55])
+    code("sudo journalctl -u gym24-access -n 5 --no-pager | grep 'QR escaneado'")
+    h2("Corregir cables cruzados sin tocar el hardware")
+    code("sudo nano /opt/gym24/.env\n\n# Añadir o cambiar (1 = invertido, 0 = normal)\nINVERTIR_LECTORES=1\nINVERTIR_RELES=1\n\n"
+         "sudo systemctl restart gym24-access\nsudo journalctl -u gym24-access -n 20 --no-pager | grep -E 'Modo USB|Thread iniciado'")
+    p("En el log y en la tarjeta del Monitor RPi (dato \"Inversión\" y \"Lectores QR\") verás qué lector quedó como ENTRADA y cuál como SALIDA. "
+      "Repite las 2 pruebas para confirmar. También puedes intercambiar físicamente los USB de los lectores o los cables IN1/IN2 del relé (con la Pi apagada).")
 
     h1("Reglas importantes")
     bullets([

@@ -20,7 +20,7 @@ COMMAND_EXPIRE_MINUTES = 10
 TELEMETRY_FIELDS = [
     "local_ip", "hostname", "cpu_temp", "cpu_usage", "memory_usage", "disk_usage",
     "uptime", "wifi_signal", "software_version", "qr_readers", "camera",
-    "last_scan_at", "last_scan_result",
+    "last_scan_at", "last_scan_result", "invert_readers", "invert_relays",
 ]
 
 

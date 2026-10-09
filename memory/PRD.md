@@ -108,7 +108,8 @@ docker run -d \
 ## Cambios Jun 2026 — Manual DispositivosGym24 v2.0
 - Generador persistente: `docs/generar_manual_dispositivos.py` (ReportLab) -> `/app/DispositivosGym24.pdf` + `frontend/public/downloads/DispositivosGym24.pdf` (https://gym24.app/downloads/DispositivosGym24.pdf).
 - Nuevas secciones: Monitor RPi y comandos, anti-doble lectura, actualizar Pi existente (backup/rollback), descarga del script vía `GET /api/download/raspberry-py` (sirve `backend/downloads/raspberry_access_control.py`, copia del script raíz — mantener sincronizada).
-- PENDIENTE decisión usuario: con QR el servidor alterna entrada/salida ignorando el lector físico (logs coslada: "QR escaneado (entrada)" -> "Abriendo torno SALIDA"). Propuesta: respetar dirección del lector cuando != auto.
+- RESUELTO (script Pi 2.2): si la petición QR trae `device_id` (Pi >= 2.2) y direction entrada/salida -> manda el lector físico. Sin device_id (scripts antiguos) o 'auto' -> alterna como antes (needs_first_entry fuerza Entrada). Pi: `INVERTIR_LECTORES` / `INVERTIR_RELES` en .env; telemetría `invert_readers/invert_relays`. Test: `backend/tests/test_reader_direction.py`.
+- Coslada = FitnessPlace: logs sugieren lectores Y relés cruzados (pendiente que el usuario confirme con las 2 pruebas del Anexo 18).
 
 ### P0 (próxima sesión)
 - Ejecutar testing_agent_v3_fork para validar E2E backend + frontend

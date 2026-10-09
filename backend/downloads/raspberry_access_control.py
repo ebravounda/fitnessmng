@@ -42,8 +42,11 @@ GYM_TOKEN = os.environ.get('GYMACCESS_GYM_TOKEN', '')
 DEVICE_ID = os.environ.get('GYMACCESS_DEVICE_ID', '')
 VIDEO_DEVICE = os.environ.get('VIDEO_DEVICE', '')
 SERVICE_NAME = os.environ.get('GYMACCESS_SERVICE_NAME', 'gym24-access')
-SOFTWARE_VERSION = '2.1'
+SOFTWARE_VERSION = '2.2'
 HEARTBEAT_SECONDS = 20
+_SI = ('1', 'true', 'si', 'yes')
+INVERTIR_LECTORES = os.environ.get('INVERTIR_LECTORES', '0').strip().lower() in _SI
+INVERTIR_RELES = os.environ.get('INVERTIR_RELES', '0').strip().lower() in _SI
 
 
 def _auto_detect_video_device():
@@ -180,6 +183,8 @@ class AccessController:
             "camera": self._camera(),
             "last_scan_at": self.last_scan_at,
             "last_scan_result": self.last_scan_result,
+            "invert_readers": INVERTIR_LECTORES,
+            "invert_relays": INVERTIR_RELES,
         }
 
     def _ping_loop(self):
@@ -238,6 +243,8 @@ class AccessController:
 
     def abrir_torno(self, direccion):
         pin = RELAY_ENTRADA if direccion == 'entrada' else RELAY_SALIDA
+        if INVERTIR_RELES:
+            pin = RELAY_SALIDA if pin == RELAY_ENTRADA else RELAY_ENTRADA
         nombre = "ENTRADA" if direccion == 'entrada' else "SALIDA"
         logger.info(f"Abriendo torno {nombre}")
         if GPIO_AVAILABLE:
@@ -318,7 +325,8 @@ class AccessController:
                 json={
                     "qr_code": qr_code,
                     "gym_token": GYM_TOKEN,
-                    "direction": forced_direction
+                    "direction": forced_direction,
+                    "device_id": DEVICE_ID
                 },
                 timeout=10
             )
@@ -489,8 +497,6 @@ class AccessController:
         except ImportError:
             logger.warning("evdev no instalado, usando modo stdin (manual)")
 
-        self.reader_names = [f"{d.name} ({d.path})" for d in devices[:2]]
-
         if devices:
             # 1er lector (path mas bajo) = ENTRADA
             # 2do lector = SALIDA
@@ -500,16 +506,18 @@ class AccessController:
                 assignments.append((devices[0], "auto"))
                 print(f"   Lector unico: {devices[0].name} -> ENTRADA/SALIDA auto")
             else:
-                assignments.append((devices[0], "entrada"))
-                assignments.append((devices[1], "salida"))
-                print(f"   Lector ENTRADA: {devices[0].name}")
-                print(f"   Lector SALIDA:  {devices[1].name}")
+                entrada_dev, salida_dev = (devices[1], devices[0]) if INVERTIR_LECTORES else (devices[0], devices[1])
+                assignments.append((entrada_dev, "entrada"))
+                assignments.append((salida_dev, "salida"))
+                print(f"   Lector ENTRADA: {entrada_dev.name} ({entrada_dev.path})")
+                print(f"   Lector SALIDA:  {salida_dev.name} ({salida_dev.path})")
                 if len(devices) > 2:
                     print(f"   (Ignorando {len(devices) - 2} lectores adicionales)")
             print("="*50)
             print("   Esperando codigos QR...")
             print("="*50 + "\n")
-            logger.info(f"Modo USB activo - {len(assignments)} lectores")
+            self.reader_names = [f"{d.path} -> {direc.upper()}" for d, direc in assignments]
+            logger.info(f"Modo USB activo - {len(assignments)} lectores | INVERTIR_LECTORES={INVERTIR_LECTORES} INVERTIR_RELES={INVERTIR_RELES}")
 
             threads = []
             for device, direction in assignments:

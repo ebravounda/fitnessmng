@@ -16,6 +16,16 @@ from qr_utils import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
+DUPLICATE_SCAN_SECONDS = 10
+
+
+def _is_duplicate_scan(last_log: dict | None) -> bool:
+    """True si la ultima marca real del socio fue hace menos de DUPLICATE_SCAN_SECONDS."""
+    if not last_log or last_log.get("system_reset"):
+        return False
+    ts = datetime.fromisoformat(last_log["timestamp"].replace('Z', '+00:00'))
+    return (datetime.now(timezone.utc) - ts).total_seconds() < DUPLICATE_SCAN_SECONDS
+
 @router.get("/qr/generate")
 async def generate_qr(credentials: HTTPAuthorizationCredentials = Depends(security)):
     payload = decode_jwt_token(credentials)
@@ -147,6 +157,11 @@ async def validate_access(validation: AccessValidation):
             {"member_id": member["id"], "gym_id": gym["id"], "is_guest": {"$ne": True}},
             {"_id": 0}, sort=[("timestamp", -1)]
         )
+        if _is_duplicate_scan(last_log):
+            logger.info(f"Doble lectura ignorada (RFID) socio {member.get('code')}")
+            return {"valid": True, "duplicate": True, "member_name": member["name"],
+                    "member_code": member.get("code"), "direction": last_log.get("direction"),
+                    "access_type": "rfid"}
         direction = validation.direction
         # NUEVO: si el socio nunca ha ingresado, su PRIMERA marca es siempre ENTRADA
         if member.get("needs_first_entry"):
@@ -226,6 +241,10 @@ async def validate_access(validation: AccessValidation):
         {"member_id": member["id"], "gym_id": gym["id"], "is_guest": {"$ne": True}},
         {"_id": 0}, sort=[("timestamp", -1)]
     )
+    if _is_duplicate_scan(last_log):
+        logger.info(f"Doble lectura ignorada (QR) socio {member.get('code')}")
+        return {"valid": True, "duplicate": True, "member_name": member["name"],
+                "member_code": member["code"], "direction": last_log.get("direction")}
     # NUEVO: si el socio nunca ha ingresado, su PRIMERA marca es siempre ENTRADA
     if member.get("needs_first_entry"):
         actual_direction = "entrada"

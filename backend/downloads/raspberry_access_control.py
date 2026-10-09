@@ -138,7 +138,7 @@ class GymAccessClient:
                 timeout=5
             )
             return response.status_code == 200
-        except:
+        except Exception:
             return False
 
 
@@ -159,7 +159,7 @@ def load_scanner_map():
         try:
             with open(SCANNER_MAP_FILE, 'r') as f:
                 return json.load(f)
-        except:
+        except Exception:
             pass
     return None
 
@@ -263,7 +263,7 @@ def read_scanner(device, direccion, gpio, client):
 
     try:
         device.grab()
-    except:
+    except Exception:
         logger.warning(f"No se pudo tomar control exclusivo de {device.path}")
 
     for event in device.read_loop():

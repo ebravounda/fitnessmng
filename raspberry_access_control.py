@@ -69,6 +69,7 @@ VIDEO_DIR = '/tmp/gym24_videos'
 RELAY_ENTRADA = 12
 RELAY_SALIDA = 16
 TIEMPO_APERTURA = 3
+DEBOUNCE_SEGUNDOS = 3  # ignora el mismo QR leido de nuevo (o por el otro lector) en este lapso
 
 os.makedirs(VIDEO_DIR, exist_ok=True)
 
@@ -76,6 +77,8 @@ os.makedirs(VIDEO_DIR, exist_ok=True)
 class AccessController:
     def __init__(self):
         self.running = True
+        self._last_scan = {}
+        self._scan_lock = threading.Lock()
         
         if GPIO_AVAILABLE:
             GPIO.setmode(GPIO.BCM)
@@ -197,8 +200,20 @@ class AccessController:
         if not qr_code:
             return
         
+        with self._scan_lock:
+            ahora = time.time()
+            if ahora - self._last_scan.get(qr_code, 0) < DEBOUNCE_SEGUNDOS:
+                logger.info(f"Doble lectura local ignorada ({forced_direction})")
+                return
+            self._last_scan = {k: v for k, v in self._last_scan.items() if ahora - v < DEBOUNCE_SEGUNDOS}
+            self._last_scan[qr_code] = ahora
+        
         logger.info(f"QR escaneado ({forced_direction}): {qr_code[:20]}...")
         resultado = self.validar_qr(qr_code, forced_direction)
+        
+        if resultado.get('duplicate'):
+            logger.info(f"Doble lectura ignorada por servidor: {resultado.get('member_name', '')}")
+            return
         
         if resultado.get('valid'):
             direction = resultado.get('direction', forced_direction if forced_direction != 'auto' else 'entrada')

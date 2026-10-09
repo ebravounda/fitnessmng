@@ -1,3 +1,4 @@
+from storage import write_file
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials
@@ -44,8 +45,7 @@ async def upload_access_video(
     if len(content) > 10 * 1024 * 1024:  # Max 10MB
         raise HTTPException(status_code=413, detail="Video too large (max 10MB)")
     
-    with open(filepath, "wb") as f:
-        f.write(content)
+    write_file(filepath, content)
     
     # Update access log with video reference
     await db.access_logs.update_one(

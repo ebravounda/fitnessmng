@@ -91,6 +91,13 @@ docker run -d \
 
 ## Backlog
 
+## Cambios Jun 2026 — Anti-doble lectura
+- Backend `access_routes.py`: `_is_duplicate_scan` — si el mismo socio escanea (QR o RFID) <10s después de su última marca real, se responde `{valid: True, duplicate: True}` SIN crear log (evita "salida" fantasma). Las marcas `system_reset` no cuentan.
+- Raspberry `raspberry_access_control.py`: debounce local de 3s por QR (cubre los 2 lectores leyendo el mismo móvil) e ignora respuestas `duplicate` (no abre relé ni graba video).
+- Lint: bare `except` corregidos; escritura de videos con `Path.write_bytes` (sigue en volumen Docker del VPS).
+- Verificado con script python: 3 escaneos seguidos → 1 log "entrada"; escaneo a los 11s → "salida".
+- PENDIENTE USUARIO: Save to GitHub + desplegar en VPS + copiar nuevo raspberry_access_control.py a cada Raspberry.
+
 ### P0 (próxima sesión)
 - Ejecutar testing_agent_v3_fork para validar E2E backend + frontend
 - Re-subir logos de gyms (FitnessManager, MIXED Sport Center, Sala de Armas)

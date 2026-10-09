@@ -241,7 +241,7 @@ async def get_members(gym_id: Optional[str] = None, status: Optional[str] = None
         query["gym_id"] = gym_id
     if status:
         query["status"] = status
-    members = await db.members.find(query, {"_id": 0}).to_list(1000)
+    members = await db.members.find(query, {"_id": 0}).to_list(length=None)
 
     # Enrich with active membership data
     member_ids = [m["id"] for m in members]

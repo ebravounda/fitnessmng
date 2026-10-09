@@ -217,12 +217,16 @@ async def validate_access(validation: AccessValidation):
     if end_date < datetime.now(timezone.utc):
         await db.memberships.update_one({"id": membership["id"]}, {"$set": {"status": "expired"}})
         return {"valid": False, "reason": "Membership expired"}
-    # Anti-passback
+    # Anti-passback (fallback) + respetar direccion forzada del lector fisico si viene
     last_log = await db.access_logs.find_one(
         {"member_id": member["id"], "gym_id": gym["id"], "is_guest": {"$ne": True}},
         {"_id": 0}, sort=[("timestamp", -1)]
     )
-    if last_log:
+    forced_dir = (validation.direction or "").lower().strip()
+    if forced_dir in ("entrada", "salida"):
+        # Reader fisico fuerza direccion -> prevalece sobre anti-passback
+        actual_direction = forced_dir
+    elif last_log:
         actual_direction = "salida" if last_log.get("direction") == "entrada" else "entrada"
     else:
         actual_direction = "entrada"

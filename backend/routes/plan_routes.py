@@ -92,7 +92,7 @@ async def get_memberships(gym_id: Optional[str] = None, member_id: Optional[str]
         query["gym_id"] = gym_id
     if member_id:
         query["member_id"] = member_id
-    memberships = await db.memberships.find(query, {"_id": 0}).to_list(1000)
+    memberships = await db.memberships.find(query, {"_id": 0}).to_list(length=None)
     return memberships
 
 @router.get("/memberships/expiring")
@@ -102,7 +102,7 @@ async def get_expiring_memberships(days: int = 10, admin: dict = Depends(get_cur
         query["gym_id"] = admin.get("gym_id")
     now = datetime.now(timezone.utc)
     future = now + timedelta(days=days)
-    memberships = await db.memberships.find(query, {"_id": 0}).to_list(1000)
+    memberships = await db.memberships.find(query, {"_id": 0}).to_list(length=None)
     expiring = []
     for m in memberships:
         try:
